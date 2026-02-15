@@ -548,7 +548,7 @@
 
         /* TradingView widget container - TRIPLED HEIGHT */
         .tradingview-widget-container {
-            height: 1200px;
+            height: 1400px;
             width: 100%;
             margin-top: 16px;
         }
@@ -593,7 +593,7 @@
             <div class="flex items-center gap-2">
                 <i class="fas fa-terminal text-bloomberg-orange text-sm"></i>
                 <span class="text-gray-400 text-sm tracking-wide">MINI BLOOMBERG</span>
-                <span class="text-gray-600 text-xs px-1.5 py-0.5 border border-gray-700 rounded">v4.0</span>
+                <span class="text-gray-600 text-xs px-1.5 py-0.5 border border-gray-700 rounded">0xZee</span>
             </div>
             <div class="h-3 w-px bg-gray-800"></div>
             <div class="flex items-center gap-1.5 text-xs">
@@ -1365,7 +1365,7 @@
 
         async function loadTopNews() {
             try {
-                const tickers = ['SPY', 'QQQ', 'DIA', 'AAPL', 'TSLA'];
+                const tickers = ['SPY', 'QQQ', 'DIA', 'SMH', 'ARKK'];
                 let allNews = [];
                
                 for (const ticker of tickers) {
@@ -1872,7 +1872,7 @@
                 "locale": "en",
                 "save_image": true,
                 "style": "1",
-                "symbol": "NYSE:RKLB",
+                "symbol": "NASDAQ:RKLB",
                 "theme": "dark",
                 "timezone": "Etc/UTC",
                 "backgroundColor": "#0F0F0F",
@@ -2364,17 +2364,13 @@
         }
 
         async function loadStockMatrix() {
-            const allTickers = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'NVDA', 'META', 'NFLX', 'AMD', 'INTC',
-                            'JPM', 'BAC', 'GS', 'MS', 'WFC',
-                            'JNJ', 'PFE', 'UNH', 'ABBV', 'MRK',
-                            'XOM', 'CVX', 'COP', 'SLB',
-                            'SPY', 'QQQ', 'DIA', 'IWM', 'VTI', 'VOO',
-                            'XLK', 'XLF', 'XLV', 'XLE', 'XLY', 'XLP', 'XLI', 'XLB', 'XLU', 'XLRE', 'XLC',
-                            'ARKK', 'ARKG', 'ARKQ', 'ARKW', 'ARKF', 'ARKX',
+            const allTickers = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'WMT', 'META', 'NFLX', 'AMD', 'INTC',
+                            'IREN', 'NBIS', 'CRWD', 'RKLB', 'ASTS', 'LUNR',
                             'SOXX', 'SMH', 'SKYY', 'CIBR', 'BOTZ', 'ICLN',
-                            'GLD', 'SLV', 'USO', 'UNG', 'TLT', 'HYG', 'LQD', 'EMB',
-                            'EEM', 'EFA', 'VEA', 'VWO', 'IEFA',
-                            'BTC-USD', 'ETH-USD', '^GSPC', '^NDX', '^DJI', '^VIX', '^FTSE', '^N225'];
+                            'SOUN', 'BBAI', 'RGTI', 'QBTS', 'IONQ',
+                            //'GLD', 'SLV', 'USO', 'UNG', 'TLT', 'HYG', 'LQD', 'EMB',
+                            'ARKK', 'ARKG', 'ARKQ', 'ARKW', 'ARKF', 'ARKX',
+                               ];
             
             let html = `
                 <div class="panel-header mb-2">
