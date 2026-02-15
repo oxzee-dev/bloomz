@@ -1,0 +1,2133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MINI BLOOMBERG TERMINAL</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        bloomberg: {
+                            orange: "#F39F41",
+                            orangeDim: "rgba(243, 159, 65, 0.1)",
+                            orangeBorder: "rgba(243, 159, 65, 0.2)",
+                            black: "#000000",
+                            dark: "#0a0a0a",
+                            gray: "#1a1a1a",
+                            "light-gray": "#2a2a2a",
+                            "text-gray": "#888888",
+                            green: "#00aa00",
+                            red: "#cc3333",
+                            yellow: "#cc9900",
+                            blue: "#0066cc",
+                            cyan: "#009999",
+                            magenta: "#cc00cc",
+                        },
+                    },
+                    fontFamily: {
+                        terminal: ['"Courier New"', 'Monaco', 'Consolas', 'monospace'],
+                    },
+                    animation: {
+                        "ticker": "ticker 50s linear infinite",
+                        "blink": "blink 1s step-end infinite",
+                        "fade-in": "fadeIn 0.3s ease-in",
+                    },
+                    keyframes: {
+                        "ticker": {
+                            "0%": { transform: "translateX(0)" },
+                            "100%": { transform: "translateX(-50%)" },
+                        },
+                        "blink": {
+                            "0%, 50%": { opacity: "1" },
+                            "51%, 100%": { opacity: "0" },
+                        },
+                        "fadeIn": {
+                            "from": { opacity: "0", transform: "translateY(5px)" },
+                            "to": { opacity: "1", transform: "translateY(0)" },
+                        },
+                    },
+                },
+            },
+        }
+    </script>
+    <style>
+        * { box-sizing: border-box; }
+       
+        body {
+            font-family: "Courier New", Monaco, Consolas, monospace;
+            background-color: #000000;
+            color: #888888;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            font-size: 12px;
+        }
+       
+        .scanline {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.1));
+            background-size: 100% 4px;
+            pointer-events: none;
+            z-index: 9999;
+            opacity: 0.05;
+        }
+       
+        .ticker-tape {
+            background: #0a0a0a;
+            border-bottom: 1px solid #1a1a1a;
+            overflow: hidden;
+            white-space: nowrap;
+            position: relative;
+            height: 28px;
+            line-height: 28px;
+        }
+       
+        .ticker-content {
+            display: inline-flex;
+            animation: ticker 50s linear infinite;
+        }
+       
+        .ticker-item {
+            display: inline-flex;
+            align-items: center;
+            padding: 0 16px;
+            border-right: 1px solid #1a1a1a;
+            font-size: 11px;
+        }
+       
+        .ticker-item:hover {
+            background: #1a1a1a;
+            cursor: pointer;
+        }
+       
+        @keyframes ticker {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+       
+        .chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            scroll-behavior: smooth;
+            background: #000000;
+        }
+       
+        .chat-message {
+            margin-bottom: 12px;
+            animation: fadeIn 0.2s ease-in;
+            border-left: 2px solid #F39F41;
+            padding-left: 12px;
+        }
+       
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+       
+        .command-line {
+            color: #666666;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 10px;
+        }
+       
+        .timestamp {
+            color: #444444;
+            font-size: 9px;
+        }
+       
+        .input-area {
+            border-top: 1px solid #1a1a1a;
+            background: #0a0a0a;
+            padding: 10px 16px;
+            position: relative;
+        }
+       
+        .command-input {
+            background: #000000;
+            border: 1px solid #2a2a2a;
+            outline: none;
+            color: #888888;
+            font-family: "Courier New", monospace;
+            text-transform: uppercase;
+            width: 100%;
+            font-size: 12px;
+            padding: 8px 12px;
+            border-radius: 3px;
+        }
+       
+        .command-input:focus {
+            border-color: #F39F41;
+        }
+       
+        .autocomplete-dropdown {
+            position: absolute;
+            bottom: 100%;
+            left: 16px;
+            right: 16px;
+            background: #0a0a0a;
+            border: 1px solid #2a2a2a;
+            border-radius: 3px;
+            max-height: 150px;
+            overflow-y: auto;
+            z-index: 100;
+            display: none;
+            font-size: 11px;
+        }
+       
+        .autocomplete-item {
+            padding: 6px 12px;
+            cursor: pointer;
+            color: #888888;
+            border-bottom: 1px solid #1a1a1a;
+        }
+       
+        .autocomplete-item:hover, .autocomplete-item.selected {
+            background: rgba(243, 159, 65, 0.1);
+            color: #F39F41;
+        }
+       
+        .quick-buttons {
+            display: flex;
+            gap: 6px;
+            margin-top: 8px;
+            overflow-x: auto;
+            padding-bottom: 4px;
+        }
+       
+        .quick-btn {
+            padding: 4px 10px;
+            background: #1a1a1a;
+            border: 1px solid #2a2a2a;
+            color: #666666;
+            font-size: 10px;
+            cursor: pointer;
+            border-radius: 2px;
+            white-space: nowrap;
+            transition: all 0.15s;
+        }
+       
+        .quick-btn:hover {
+            background: rgba(243, 159, 65, 0.1);
+            border-color: #F39F41;
+            color: #F39F41;
+        }
+       
+        .panel {
+            background: #0a0a0a;
+            border: 1px solid #1a1a1a;
+            border-radius: 3px;
+        }
+       
+        .panel:hover {
+            border-color: #2a2a2a;
+        }
+        
+        .panel-header {
+            background: #0f0f0f;
+            border-bottom: 1px solid #1a1a1a;
+            padding: 8px 12px;
+        }
+        
+        .section-title {
+            color: #F39F41;
+            font-size: 11px;
+            letter-spacing: 0.5px;
+        }
+        
+        .dashboard-card {
+            background: #0a0a0a;
+            border: 1px solid #1a1a1a;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+        
+        .dashboard-card:hover {
+            border-color: #2a2a2a;
+        }
+        
+        .stat-label {
+            color: #666666;
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+       
+        .metric-card {
+            background: #0a0a0a;
+            border: 1px solid #1a1a1a;
+            border-radius: 3px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .metric-card.positive {
+            border-top: 2px solid #00aa00;
+        }
+        
+        .metric-card.negative {
+            border-top: 2px solid #cc3333;
+        }
+        
+        .metric-card.neutral {
+            border-top: 2px solid #F39F41;
+        }
+        
+        .metric-card.buy {
+            border-top: 2px solid #00aa00;
+            background: rgba(0, 170, 0, 0.05);
+        }
+        
+        .metric-card.hold {
+            border-top: 2px solid #cc9900;
+            background: rgba(204, 153, 0, 0.05);
+        }
+        
+        .metric-card.sell {
+            border-top: 2px solid #cc3333;
+            background: rgba(204, 51, 51, 0.05);
+        }
+       
+        .metric-card:hover {
+            border-color: #2a2a2a;
+        }
+       
+        .news-item {
+            border-left: 2px solid transparent;
+            transition: all 0.15s;
+            padding: 6px 8px;
+        }
+       
+        .news-item:hover {
+            border-left-color: #F39F41;
+            background: rgba(243, 159, 65, 0.03);
+        }
+       
+        .progress-bar {
+            background: #1a1a1a;
+            height: 4px;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+       
+        .progress-fill {
+            height: 100%;
+            background: #F39F41;
+        }
+       
+        .loading {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border: 1px solid #1a1a1a;
+            border-top: 1px solid #F39F41;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+       
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+       
+        .value-up { color: #00aa00; }
+        .value-down { color: #cc3333; }
+       
+        .flag {
+            font-size: 12px;
+            margin-right: 4px;
+        }
+       
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+       
+        ::-webkit-scrollbar-track {
+            background: #000000;
+        }
+       
+        ::-webkit-scrollbar-thumb {
+            background: #1a1a1a;
+        }
+       
+        ::-webkit-scrollbar-thumb:hover {
+            background: #2a2a2a;
+        }
+
+        .des-header {
+            background: #0f0f0f;
+            border: 1px solid #1a1a1a;
+            border-radius: 3px;
+            padding: 12px;
+        }
+
+        .fa-section {
+            background: #0a0a0a;
+            border: 1px solid #1a1a1a;
+            border-radius: 3px;
+            padding: 10px;
+        }
+
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+            border-bottom: 1px solid #1a1a1a;
+        }
+
+        .metric-row:last-child {
+            border-bottom: none;
+        }
+
+        .data-table th {
+            background: #0f0f0f;
+            color: #F39F41;
+            font-weight: normal;
+            text-transform: uppercase;
+            font-size: 9px;
+            letter-spacing: 0.5px;
+            padding: 6px;
+        }
+
+        .data-table td {
+            padding: 6px;
+            font-size: 11px;
+        }
+
+        .data-table tr:hover td {
+            background: rgba(243, 159, 65, 0.03);
+        }
+
+        .condensed-news {
+            padding: 6px 8px;
+            font-size: 11px;
+            line-height: 1.3;
+        }
+
+        .no-border-output {
+            border: none;
+            background: transparent;
+        }
+
+        .read-more {
+            color: #F39F41;
+            cursor: pointer;
+            font-size: 10px;
+            border: 1px solid #F39F41;
+            padding: 2px 6px;
+            border-radius: 2px;
+            display: inline-block;
+            margin-top: 4px;
+        }
+
+        .read-more:hover {
+            background: rgba(243, 159, 65, 0.1);
+        }
+
+        .description-text {
+            max-height: 3.6em;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+
+        .description-text.expanded {
+            max-height: none;
+        }
+
+        .crypto-card {
+            background: #0a0a0a;
+            border: 1px solid #1a1a1a;
+            border-radius: 3px;
+            padding: 12px;
+            text-align: center;
+        }
+
+        .crypto-card.positive {
+            border-top: 2px solid #00aa00;
+        }
+
+        .crypto-card.negative {
+            border-top: 2px solid #cc3333;
+        }
+    </style>
+<base target="_blank">
+</head>
+<body>
+    <div class="scanline"></div>
+   
+    <!-- Rolling Ticker Tape -->
+    <div class="ticker-tape">
+        <div class="ticker-content" id="tickerTape"></div>
+    </div>
+   
+    <!-- Header -->
+    <header class="border-b border-bloomberg-gray bg-black p-2 flex justify-between items-center shrink-0">
+        <div class="flex items-center gap-3">
+            <div class="flex items-center gap-2">
+                <i class="fas fa-terminal text-bloomberg-orange text-sm"></i>
+                <span class="text-gray-400 text-sm tracking-wide">MINI BLOOMBERG</span>
+                <span class="text-gray-600 text-xs px-1.5 py-0.5 border border-gray-700 rounded">v4.0</span>
+            </div>
+            <div class="h-3 w-px bg-gray-800"></div>
+            <div class="flex items-center gap-1.5 text-xs">
+                <span class="w-1.5 h-1.5 rounded-full bg-bloomberg-green"></span>
+                <span class="text-gray-500">OPEN</span>
+            </div>
+        </div>
+        <div class="flex gap-4 text-xs font-mono">
+            <div class="flex items-center gap-1.5">
+                <i class="fas fa-clock text-gray-600 text-xs"></i>
+                <span id="clock" class="text-gray-500">00:00:00</span>
+            </div>
+        </div>
+    </header>
+    <!-- Chat Output Area -->
+    <div id="chatContainer" class="chat-container">
+        <div id="welcomeMessage" class="p-4">
+            <!-- Market Dashboard -->
+            <div class="mb-4">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center gap-2">
+                        <div class="w-0.5 h-6 bg-bloomberg-orange"></div>
+                        <div>
+                            <div class="text-lg text-gray-300">MARKET DASHBOARD</div>
+                            <div class="text-xs text-gray-600">REAL-TIME MARKET INTELLIGENCE</div>
+                        </div>
+                    </div>
+                    <div class="flex gap-2 text-xs">
+                        <div class="text-center px-3 py-1.5 bg-bloomberg-dark rounded border border-gray-800">
+                            <div class="text-gray-500 text-xs">US MARKETS</div>
+                            <div class="text-gray-300 font-mono">OPEN</div>
+                        </div>
+                        <div class="text-center px-3 py-1.5 bg-bloomberg-dark rounded border border-gray-800">
+                            <div class="text-gray-500 text-xs">SESSION</div>
+                            <div class="text-gray-300 font-mono" id="marketSession">REG</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Market Overview Grid -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
+                    <div class="dashboard-card p-3 border-t border-bloomberg-orange">
+                        <div class="flex justify-between items-start mb-1">
+                            <span class="stat-label">S&P 500</span>
+                            <i class="fas fa-chart-line text-gray-600 text-xs"></i>
+                        </div>
+                        <div class="text-lg text-gray-200 font-mono mb-0.5" id="dash-sp500">--</div>
+                        <div class="text-xs text-bloomberg-green font-mono" id="dash-sp500-change">--</div>
+                    </div>
+                    
+                    <div class="dashboard-card p-3 border-t border-bloomberg-orange">
+                        <div class="flex justify-between items-start mb-1">
+                            <span class="stat-label">NASDAQ</span>
+                            <i class="fas fa-microchip text-gray-600 text-xs"></i>
+                        </div>
+                        <div class="text-lg text-gray-200 font-mono mb-0.5" id="dash-nasdaq">--</div>
+                        <div class="text-xs text-bloomberg-green font-mono" id="dash-nasdaq-change">--</div>
+                    </div>
+                    
+                    <div class="dashboard-card p-3 border-t border-bloomberg-orange">
+                        <div class="flex justify-between items-start mb-1">
+                            <span class="stat-label">VIX</span>
+                            <i class="fas fa-wave-square text-gray-600 text-xs"></i>
+                        </div>
+                        <div class="text-lg text-gray-200 font-mono mb-0.5" id="dash-vix">--</div>
+                        <div class="text-xs text-gray-500 font-mono" id="dash-vix-change">VOL</div>
+                    </div>
+                    
+                    <div class="dashboard-card p-3 border-t border-bloomberg-orange">
+                        <div class="flex justify-between items-start mb-1">
+                            <span class="stat-label">BTC/USD</span>
+                            <i class="fab fa-bitcoin text-gray-600 text-xs"></i>
+                        </div>
+                        <div class="text-lg text-gray-200 font-mono mb-0.5" id="dash-btc">--</div>
+                        <div class="text-xs font-mono" id="dash-btc-change">--</div>
+                    </div>
+                </div>
+
+                <!-- Sector Performance Mini-View -->
+                <div class="dashboard-card p-3 mb-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="stat-label">SECTOR PERFORMANCE</span>
+                        <span class="text-xs text-gray-600">Top Movers</span>
+                    </div>
+                    <div class="grid grid-cols-3 md:grid-cols-6 gap-1.5" id="sector-miniview"></div>
+                </div>
+            </div>
+            
+            <!-- Quick Access Commands -->
+            <div class="bg-bloomberg-dark/50 border border-gray-800 rounded p-4">
+                <div class="text-gray-500 font-mono mb-3 text-center text-xs tracking-wider">
+                    QUICK ACCESS COMMANDS
+                </div>
+                <div class="grid grid-cols-2 md:grid-cols-6 gap-2">
+                    <div class="text-center p-2 border border-gray-800 rounded hover:border-bloomberg-orange/50 hover:bg-bloomberg-orange/5 transition-all cursor-pointer" onclick="executeQuickCommand('WEI')">
+                        <div class="text-gray-400 text-xs font-mono">WEI</div>
+                        <div class="text-gray-600 text-xs">World Indices</div>
+                    </div>
+                    <div class="text-center p-2 border border-gray-800 rounded hover:border-bloomberg-orange/50 hover:bg-bloomberg-orange/5 transition-all cursor-pointer" onclick="executeQuickCommand('GP')">
+                        <div class="text-gray-400 text-xs font-mono">GP</div>
+                        <div class="text-gray-600 text-xs">Global Perf</div>
+                    </div>
+                    <div class="text-center p-2 border border-gray-800 rounded hover:border-bloomberg-orange/50 hover:bg-bloomberg-orange/5 transition-all cursor-pointer" onclick="executeQuickCommand('STX')">
+                        <div class="text-gray-400 text-xs font-mono">STX</div>
+                        <div class="text-gray-600 text-xs">Stock Matrix</div>
+                    </div>
+                    <div class="text-center p-2 border border-gray-800 rounded hover:border-bloomberg-orange/50 hover:bg-bloomberg-orange/5 transition-all cursor-pointer" onclick="executeQuickCommand('CRYP')">
+                        <div class="text-gray-400 text-xs font-mono">CRYP</div>
+                        <div class="text-gray-600 text-xs">Crypto</div>
+                    </div>
+                    <div class="text-center p-2 border border-gray-800 rounded hover:border-bloomberg-orange/50 hover:bg-bloomberg-orange/5 transition-all cursor-pointer" onclick="executeQuickCommand('BOND')">
+                        <div class="text-gray-400 text-xs font-mono">BOND</div>
+                        <div class="text-gray-600 text-xs">Rates</div>
+                    </div>
+                    <div class="text-center p-2 border border-gray-800 rounded hover:border-bloomberg-orange/50 hover:bg-bloomberg-orange/5 transition-all cursor-pointer" onclick="executeQuickCommand('ETF')">
+                        <div class="text-gray-400 text-xs font-mono">ETF</div>
+                        <div class="text-gray-600 text-xs">Thematic</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="text-center mt-4 text-gray-600 text-xs">
+                Type any command below or click a quick access button to begin
+            </div>
+        </div>
+        <div id="chatHistory"></div>
+        <div id="loadingIndicator" class="hidden p-3 text-center">
+            <span class="loading mr-2"></span>
+            <span class="text-gray-500 text-xs">PROCESSING...</span>
+        </div>
+    </div>
+    <!-- Input Area (Bottom) -->
+    <div class="input-area">
+        <div class="relative">
+            <div class="flex items-center gap-2">
+                <span class="text-bloomberg-orange font-mono text-sm">></span>
+                <input
+                    type="text"
+                    id="commandInput"
+                    class="command-input"
+                    placeholder="ENTER COMMAND..."
+                    autocomplete="off"
+                    spellcheck="false"
+                >
+                <button onclick="clearChat()" class="text-gray-600 hover:text-gray-400 text-xs px-2 py-1.5 border border-gray-800 rounded hover:border-gray-600 transition-colors">
+                    CLR
+                </button>
+            </div>
+           
+            <div id="autocompleteDropdown" class="autocomplete-dropdown"></div>
+        </div>
+       
+        <div class="quick-buttons">
+            <button onclick="executeQuickCommand('WEI')" class="quick-btn">WEI</button>
+            <button onclick="executeQuickCommand('GP')" class="quick-btn">GP</button>
+            <button onclick="executeQuickCommand('STX')" class="quick-btn">STX</button>
+            <button onclick="executeQuickCommand('CRYP')" class="quick-btn">CRYP</button>
+            <button onclick="executeQuickCommand('BOND')" class="quick-btn">BOND</button>
+            <button onclick="executeQuickCommand('TOP')" class="quick-btn">TOP</button>
+            <button onclick="executeQuickCommand('ECO')" class="quick-btn">ECO</button>
+            <button onclick="executeQuickCommand('SECF')" class="quick-btn">SECF</button>
+            <button onclick="executeQuickCommand('ETF')" class="quick-btn">ETF</button>
+            <button onclick="executeQuickCommand('DES RKLB')" class="quick-btn">DES RKLB</button>
+            <button onclick="executeQuickCommand('FA AAPL')" class="quick-btn">FA AAPL</button>
+            <button onclick="executeQuickCommand('HELP')" class="quick-btn">HELP</button>
+        </div>
+    </div>
+    <script>
+        // Clock
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('clock').textContent = now.toLocaleTimeString('en-US', {hour12: false});
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // Ticker Symbols
+        const TICKER_SYMBOLS = [
+            { symbol: '^GSPC', name: 'SPX', flag: 'US' },
+            { symbol: '^NDX', name: 'NDX', flag: 'US' },
+            { symbol: '^DJI', name: 'DJI', flag: 'US' },
+            { symbol: '^VIX', name: 'VIX', flag: 'US' },
+            { symbol: '^FTSE', name: 'UKX', flag: 'UK' },
+            { symbol: '^N225', name: 'NKY', flag: 'JP' },
+            { symbol: 'EURUSD=X', name: 'EUR/USD', flag: 'FX' },
+            { symbol: 'GC=F', name: 'GOLD', flag: 'GC' },
+            { symbol: 'CL=F', name: 'OIL', flag: 'CL' },
+            { symbol: 'BTC-USD', name: 'BTC', flag: 'BTC' },
+            { symbol: 'TLT', name: 'TLT', flag: 'US' },
+            { symbol: 'DXY', name: 'DXY', flag: 'US' }
+        ];
+
+        async function initTicker() {
+            const tickerTape = document.getElementById('tickerTape');
+            let tickerHTML = '';
+           
+            for (let i = 0; i < 2; i++) {
+                for (const item of TICKER_SYMBOLS) {
+                    tickerHTML += `
+                        <div class="ticker-item" onclick="executeQuickCommand('DES ${item.symbol}')">
+                            <span class="text-gray-500 mr-1">${item.flag}</span>
+                            <span class="text-gray-400 mr-2">${item.name}</span>
+                            <span class="text-gray-300 font-mono" id="ticker-${item.symbol}">--</span>
+                            <span class="ml-1.5 text-xs" id="change-${item.symbol}">--</span>
+                        </div>
+                    `;
+                }
+            }
+           
+            tickerTape.innerHTML = tickerHTML;
+            await updateTickerData();
+            setInterval(updateTickerData, 30000);
+            updateDashboard();
+            setInterval(updateDashboard, 30000);
+        }
+
+        async function updateTickerData() {
+            for (const item of TICKER_SYMBOLS) {
+                try {
+                    const data = await fetchTicker(item.symbol);
+                    const price = data.main_info?.currentPrice || '--';
+                    const change = data.main_info?.oneDayChange || '--';
+                    const changeNum = parseFloat(change);
+                    const colorClass = changeNum >= 0 ? 'text-bloomberg-green' : 'text-bloomberg-red';
+                    const arrow = changeNum >= 0 ? '+' : '-';
+                   
+                    const priceEl = document.getElementById(`ticker-${item.symbol}`);
+                    const changeEl = document.getElementById(`change-${item.symbol}`);
+                   
+                    if (priceEl) priceEl.textContent = typeof price === 'number' ? price.toFixed(2) : price;
+                    if (changeEl) {
+                        changeEl.textContent = `${arrow}${Math.abs(changeNum).toFixed(2)}%`;
+                        changeEl.className = `ml-1.5 text-xs ${colorClass}`;
+                    }
+                } catch (e) {
+                    console.log(`Ticker update failed for ${item.symbol}:`, e);
+                }
+            }
+        }
+        
+        async function updateDashboard() {
+            try {
+                const spData = await fetchTicker('^GSPC');
+                const spChange = parseFloat(spData.main_info?.oneDayChange || 0);
+                document.getElementById('dash-sp500').textContent = spData.main_info?.currentPrice?.toFixed(2) || '--';
+                const spChangeEl = document.getElementById('dash-sp500-change');
+                spChangeEl.textContent = `${spChange >= 0 ? '+' : ''}${spChange.toFixed(2)}%`;
+                spChangeEl.className = `text-xs ${spChange >= 0 ? 'text-bloomberg-green' : 'text-bloomberg-red'} font-mono`;
+            } catch(e) {}
+            
+            try {
+                const ndxData = await fetchTicker('^NDX');
+                const ndxChange = parseFloat(ndxData.main_info?.oneDayChange || 0);
+                document.getElementById('dash-nasdaq').textContent = ndxData.main_info?.currentPrice?.toFixed(2) || '--';
+                const ndxChangeEl = document.getElementById('dash-nasdaq-change');
+                ndxChangeEl.textContent = `${ndxChange >= 0 ? '+' : ''}${ndxChange.toFixed(2)}%`;
+                ndxChangeEl.className = `text-xs ${ndxChange >= 0 ? 'text-bloomberg-green' : 'text-bloomberg-red'} font-mono`;
+            } catch(e) {}
+            
+            try {
+                const vixData = await fetchTicker('^VIX');
+                document.getElementById('dash-vix').textContent = vixData.main_info?.currentPrice?.toFixed(2) || '--';
+            } catch(e) {}
+            
+            try {
+                const btcData = await fetchTicker('BTC-USD');
+                const btcChange = parseFloat(btcData.main_info?.oneDayChange || 0);
+                document.getElementById('dash-btc').textContent = btcData.main_info?.currentPrice?.toLocaleString('en-US', {style: 'currency', currency: 'USD', maximumFractionDigits: 0}) || '--';
+                const btcChangeEl = document.getElementById('dash-btc-change');
+                btcChangeEl.textContent = `${btcChange >= 0 ? '+' : ''}${btcChange.toFixed(2)}%`;
+                btcChangeEl.className = `text-xs ${btcChange >= 0 ? 'text-bloomberg-green' : 'text-bloomberg-red'} font-mono`;
+            } catch(e) {}
+            
+            const sectors = [
+                {ticker: 'XLK', name: 'TECH'},
+                {ticker: 'XLF', name: 'FIN'},
+                {ticker: 'XLV', name: 'HLTH'},
+                {ticker: 'XLE', name: 'ENRG'},
+                {ticker: 'XLY', name: 'DISC'},
+                {ticker: 'XLI', name: 'IND'}
+            ];
+            
+            let sectorHtml = '';
+            for (const sec of sectors) {
+                try {
+                    const data = await fetchTicker(sec.ticker);
+                    const change = parseFloat(data.main_info?.oneDayChange || 0);
+                    const color = change >= 0 ? 'text-bloomberg-green' : 'text-bloomberg-red';
+                    sectorHtml += `
+                        <div class="text-center p-1.5 bg-black rounded border border-gray-800 hover:border-gray-700 cursor-pointer" onclick="executeQuickCommand('DES ${sec.ticker}')">
+                            <div class="text-xs text-gray-500 font-mono">${sec.name}</div>
+                            <div class="text-xs ${color} font-mono">${change >= 0 ? '+' : ''}${change.toFixed(2)}%</div>
+                        </div>
+                    `;
+                } catch(e) {
+                    sectorHtml += `
+                        <div class="text-center p-1.5 bg-black rounded border border-gray-800">
+                            <div class="text-xs text-gray-500 font-mono">${sec.name}</div>
+                            <div class="text-xs text-gray-600">--</div>
+                        </div>
+                    `;
+                }
+            }
+            document.getElementById('sector-miniview').innerHTML = sectorHtml;
+        }
+
+        const commandInput = document.getElementById('commandInput');
+        const chatContainer = document.getElementById('chatContainer');
+        const chatHistory = document.getElementById('chatHistory');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const welcomeMessage = document.getElementById('welcomeMessage');
+        const autocompleteDropdown = document.getElementById('autocompleteDropdown');
+        let commandHistory = [];
+        let historyIndex = -1;
+        
+        const COMMANDS = [
+            'WEI', 'GP', 'TOP', 'ECO', 'SECF', 'ETF', 'STX', 'CRYP', 'BOND', 'HELP', 'CLEAR',
+            'DES', 'FA', 'RV', 'HP', 'CHART', 'INDU'
+        ];
+        
+        const TICKERS = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'NVDA', 'META', 'NFLX', 'AMD', 'INTC',
+                        'JPM', 'SOFI', 'COIN', 'BMNR', 'HOOD',
+                        'BEAM', 'EXAS', 'UNH', 'RKLB', 'ASTS',
+                        'NEE', 'RIVN', 'NIO', 'XPEV',
+                        'IREN', 'NBIS', 'IONQ', 'QBTS', 'RGTI',
+                        //'SPY', 'QQQ', 'DIA', 'IWM', 'VTI', 'VOO',
+                        //'XLK', 'XLF', 'XLV', 'XLE', 'XLY', 'XLP', 'XLI', 'XLB', 'XLU', 'XLRE', 'XLC',
+                        'ARKK', 'ARKG', 'ARKQ', 'ARKW', 'ARKF', 'ARKX', 'MEME', 'QTUM',
+                        //'SOXX', 'SMH', 'SKYY', 'CIBR', 'BOTZ', 'ICLN',
+                        //'GLD', 'SLV', 'USO', 'UNG', 'TLT', 'HYG', 'LQD', 'EMB',
+                        //'EEM', 'EFA', 'VEA', 'VWO', 'IEFA',
+                        //'BTC-USD', 'ETH-USD', '^GSPC', '^NDX', '^DJI', '^VIX', '^FTSE', '^N225',
+                         ];
+
+        commandInput.addEventListener('input', function(e) {
+            const value = this.value.toUpperCase();
+            if (!value) {
+                autocompleteDropdown.style.display = 'none';
+                return;
+            }
+            const matches = [...COMMANDS, ...TICKERS].filter(cmd =>
+                cmd.startsWith(value) && cmd !== value
+            ).slice(0, 8);
+            if (matches.length > 0) {
+                autocompleteDropdown.innerHTML = matches.map((match, index) =>
+                    `<div class="autocomplete-item ${index === 0 ? 'selected' : ''}" onclick="selectAutocomplete('${match}')">${match}</div>`
+                ).join('');
+                autocompleteDropdown.style.display = 'block';
+            } else {
+                autocompleteDropdown.style.display = 'none';
+            }
+        });
+
+        commandInput.addEventListener('keydown', function(e) {
+            const items = autocompleteDropdown.querySelectorAll('.autocomplete-item');
+            let selectedIndex = Array.from(items).findIndex(item => item.classList.contains('selected'));
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (selectedIndex < items.length - 1) {
+                    items[selectedIndex]?.classList.remove('selected');
+                    items[selectedIndex + 1]?.classList.add('selected');
+                }
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (selectedIndex > 0) {
+                    items[selectedIndex]?.classList.remove('selected');
+                    items[selectedIndex - 1]?.classList.add('selected');
+                }
+            } else if (e.key === 'Tab' && selectedIndex >= 0) {
+                e.preventDefault();
+                selectAutocomplete(items[selectedIndex].textContent);
+            } else if (e.key === 'Enter') {
+                autocompleteDropdown.style.display = 'none';
+            } else if (e.key === 'Escape') {
+                autocompleteDropdown.style.display = 'none';
+            }
+        });
+
+        function selectAutocomplete(value) {
+            const currentValue = commandInput.value;
+            const lastSpace = currentValue.lastIndexOf(' ');
+            if (lastSpace >= 0) {
+                commandInput.value = currentValue.substring(0, lastSpace + 1) + value;
+            } else {
+                commandInput.value = value;
+            }
+            autocompleteDropdown.style.display = 'none';
+            commandInput.focus();
+        }
+
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.input-area')) {
+                autocompleteDropdown.style.display = 'none';
+            }
+        });
+
+        function executeQuickCommand(cmd) {
+            commandInput.value = cmd;
+            executeCommand(cmd);
+        }
+
+        function clearChat() {
+            chatHistory.innerHTML = '';
+            welcomeMessage.style.display = 'block';
+        }
+
+        function addMessage(html, isError = false) {
+            welcomeMessage.style.display = 'none';
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'chat-message';
+           
+            const timestamp = new Date().toLocaleTimeString('en-US', {hour12: false});
+            const cmdText = commandInput.value || 'SYSTEM';
+           
+            messageDiv.innerHTML = `
+                <div class="command-line">
+                    <span class="timestamp">[${timestamp}]</span>
+                    <span class="text-gray-500">></span>
+                    <span class="${isError ? 'text-bloomberg-red' : 'text-gray-500'}">${cmdText}</span>
+                </div>
+                <div class="no-border-output">
+                    ${html}
+                </div>
+            `;
+           
+            chatHistory.appendChild(messageDiv);
+            scrollToBottom();
+        }
+
+        function scrollToBottom() {
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        const API_BASE = 'https://mini-finapi.vercel.app/api';
+        const CORS_PROXIES = [
+            'https://api.allorigins.win/raw?url=',
+            'https://corsproxy.io/?',
+            'https://api.codetabs.com/v1/proxy?quest='
+        ];
+
+        async function fetchWithCORS(url) {
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 10000);
+               
+                const response = await fetch(url, {
+                    signal: controller.signal,
+                    headers: { 'Accept': 'application/json' }
+                });
+               
+                clearTimeout(timeoutId);
+                if (response.ok) return await response.json();
+            } catch (e) {
+                console.log('Direct fetch failed, trying proxies...');
+            }
+            
+            for (const proxy of CORS_PROXIES) {
+                try {
+                    const proxyUrl = proxy + encodeURIComponent(url);
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 15000);
+                   
+                    const response = await fetch(proxyUrl, {
+                        signal: controller.signal,
+                        headers: { 'Accept': 'application/json' }
+                    });
+                   
+                    clearTimeout(timeoutId);
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data && data.ticker) return data;
+                    }
+                } catch (e) {
+                    continue;
+                }
+            }
+            throw new Error('API unavailable');
+        }
+
+        async function fetchTicker(ticker) {
+            const url = `${API_BASE}/ticker?ticker=${encodeURIComponent(ticker)}`;
+            return await fetchWithCORS(url);
+        }
+
+        commandInput.addEventListener('keydown', async (e) => {
+            if (e.key === 'Enter') {
+                const cmd = commandInput.value.trim().toUpperCase();
+                if (!cmd) return;
+               
+                commandHistory.push(cmd);
+                historyIndex = commandHistory.length;
+                autocompleteDropdown.style.display = 'none';
+               
+                await executeCommand(cmd);
+                commandInput.value = '';
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (historyIndex > 0) {
+                    historyIndex--;
+                    commandInput.value = commandHistory[historyIndex];
+                }
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (historyIndex < commandHistory.length - 1) {
+                    historyIndex++;
+                    commandInput.value = commandHistory[historyIndex];
+                } else {
+                    historyIndex = commandHistory.length;
+                    commandInput.value = '';
+                }
+            }
+        });
+
+        async function executeCommand(cmd) {
+            loadingIndicator.classList.remove('hidden');
+            scrollToBottom();
+            const parts = cmd.split(' ');
+            const baseCmd = parts[0];
+            const arg = parts[1] || '';
+            try {
+                switch(baseCmd) {
+                    case 'WEI':
+                        await loadWorldIndices();
+                        break;
+                    case 'GP':
+                        await loadGlobalPerformance();
+                        break;
+                    case 'TOP':
+                        await loadTopNews();
+                        break;
+                    case 'ECO':
+                        await loadEconomicCalendar();
+                        break;
+                    case 'SECF':
+                        await loadSectorPerformance();
+                        break;
+                    case 'DES':
+                        if (!arg) throw new Error('USAGE: DES TICKER');
+                        await loadCompanyDescription(arg);
+                        break;
+                    case 'FA':
+                        if (!arg) throw new Error('USAGE: FA TICKER');
+                        await loadFinancialAnalysis(arg);
+                        break;
+                    case 'ETF':
+                        await loadETFView();
+                        break;
+                    case 'STX':
+                        await loadStockMatrix();
+                        break;
+                    case 'CRYP':
+                        await loadCryptoView();
+                        break;
+                    case 'BOND':
+                        await loadBondOutlook();
+                        break;
+                    case 'CLEAR':
+                    case 'CLS':
+                        clearChat();
+                        break;
+                    case 'HELP':
+                        showHelp();
+                        break;
+                    default:
+                        throw new Error(`UNKNOWN COMMAND: ${baseCmd}`);
+                }
+            } catch (error) {
+                console.error('Command Error:', error);
+                addMessage(`<div class="text-bloomberg-red text-xs font-mono p-2">${error.message}</div>`, true);
+            } finally {
+                loadingIndicator.classList.add('hidden');
+            }
+        }
+
+        function showHelp() {
+            addMessage(`
+                <div class="text-gray-500 font-mono text-xs p-3">
+                    <div class="text-gray-400 mb-2 text-xs uppercase tracking-wider">Available Commands</div>
+                    <div class="grid grid-cols-3 gap-1 text-xs">
+                        <div class="p-1.5"><span class="text-bloomberg-orange">WEI</span> World Indices</div>
+                        <div class="p-1.5"><span class="text-bloomberg-orange">GP</span> Global Perf</div>
+                        <div class="p-1.5"><span class="text-bloomberg-orange">STX</span> Stock Matrix</div>
+                        <div class="p-1.5"><span class="text-bloomberg-orange">CRYP</span> Crypto</div>
+                        <div class="p-1.5"><span class="text-bloomberg-orange">BOND</span> Rates</div>
+                        <div class="p-1.5"><span class="text-bloomberg-orange">TOP</span> News</div>
+                        <div class="p-1.5"><span class="text-bloomberg-orange">ECO</span> Econ Calendar</div>
+                        <div class="p-1.5"><span class="text-bloomberg-orange">SECF</span> Sectors</div>
+                        <div class="p-1.5"><span class="text-bloomberg-orange">DES</span> Description</div>
+                        <div class="p-1.5"><span class="text-bloomberg-orange">FA</span> Financial Analysis</div>
+                        <div class="p-1.5"><span class="text-bloomberg-orange">ETF</span> Thematic ETFs</div>
+                        <div class="p-1.5"><span class="text-bloomberg-orange">CLEAR</span> Clear screen</div>
+                    </div>
+                </div>
+            `);
+        }
+
+        async function loadWorldIndices() {
+            const indices = {
+                'AMERICAS': [
+                    {name: 'S&P 500', symbol: '^GSPC', flag: 'US'},
+                    {name: 'NASDAQ 100', symbol: '^NDX', flag: 'US'},
+                    {name: 'DOW JONES', symbol: '^DJI', flag: 'US'},
+                    {name: 'RUSSELL 2000', symbol: '^RUT', flag: 'US'},
+                    {name: 'VIX', symbol: '^VIX', flag: 'VX'},
+                    {name: 'DXY', symbol: 'DX-Y.NYB', flag: 'DX'}
+                ],
+                'EUROPE': [
+                    {name: 'FTSE 100', symbol: '^FTSE', flag: 'UK'},
+                    {name: 'DAX 40', symbol: '^GDAXI', flag: 'DE'},
+                    {name: 'CAC 40', symbol: '^FCHI', flag: 'FR'},
+                    {name: 'EURO STOXX 50', symbol: '^STOXX50E', flag: 'EU'},
+                    {name: 'FTSE MIB', symbol: '^FTSEMIB.MI', flag: 'IT'},
+                    {name: 'IBEX 35', symbol: '^IBEX', flag: 'ES'}
+                ],
+                'ASIA-PACIFIC': [
+                    {name: 'NIKKEI 225', symbol: '^N225', flag: 'JP'},
+                    {name: 'HANG SENG', symbol: '^HSI', flag: 'HK'},
+                    {name: 'SHANGHAI COMP', symbol: '000001.SS', flag: 'CN'},
+                    {name: 'KOSPI', symbol: '^KS11', flag: 'KR'},
+                    {name: 'ASX 200', symbol: '^AXJO', flag: 'AU'},
+                    {name: 'SENSEX', symbol: '^BSESN', flag: 'IN'}
+                ]
+            };
+            
+            let html = `<div class="panel-header mb-2"><div class="section-title">WORLD EQUITY INDICES</div></div><div class="space-y-3">`;
+            
+            for (const [region, items] of Object.entries(indices)) {
+                html += `<div><div class="text-gray-500 text-xs mb-1.5 uppercase tracking-wider">${region}</div><div class="grid grid-cols-2 md:grid-cols-3 gap-2">`;
+               
+                for (const item of items) {
+                    try {
+                        const data = await fetchTicker(item.symbol);
+                        const change = parseFloat(data.main_info?.oneDayChange || 0);
+                        const from200DMA = parseFloat(data.price_performance?.change_from_200DMA || 0);
+                        const from50DMA = parseFloat(data.price_performance?.change_from_50DMA || 0);
+                        const colorClass = change >= 0 ? 'value-up' : 'value-down';
+                       
+                        html += `
+                            <div class="metric-card p-2.5 cursor-pointer hover:border-gray-700 transition-all ${change >= 0 ? 'positive' : 'negative'}" onclick="executeQuickCommand('DES ${item.symbol}')">
+                                <div class="flex justify-between items-center mb-1">
+                                    <span class="text-gray-400 text-xs">${item.name}</span>
+                                    <span class="text-gray-600 text-xs">${item.flag}</span>
+                                </div>
+                                <div class="flex justify-between items-end">
+                                    <div class="text-gray-300 font-mono text-sm">${data.main_info.currentPrice?.toFixed(2) || '--'}</div>
+                                    <div class="text-xs ${colorClass} font-mono">${change >= 0 ? '+' : ''}${change.toFixed(2)}%</div>
+                                </div>
+                                <div class="flex justify-between text-xs mt-1.5 pt-1.5 border-t border-gray-800">
+                                    <span class="text-gray-600">50D: ${from50DMA >= 0 ? '+' : ''}${from50DMA.toFixed(1)}%</span>
+                                    <span class="text-gray-600">200D: ${from200DMA >= 0 ? '+' : ''}${from200DMA.toFixed(1)}%</span>
+                                </div>
+                            </div>
+                        `;
+                    } catch (e) {
+                        html += `
+                            <div class="panel p-2.5 opacity-50">
+                                <div class="text-gray-500 text-xs">${item.name}</div>
+                                <div class="text-bloomberg-red text-xs">ERR</div>
+                            </div>
+                        `;
+                    }
+                }
+                html += `</div></div>`;
+            }
+            html += `</div>`;
+            addMessage(html);
+        }
+
+        async function loadGlobalPerformance() {
+            const assets = [
+                {name: 'BTC', ticker: 'BTC-USD', category: 'CRYPTO'},
+                {name: 'ETH', ticker: 'ETH-USD', category: 'CRYPTO'},
+                {name: 'GOLD', ticker: 'GC=F', category: 'COMM'},
+                {name: 'SILVER', ticker: 'SI=F', category: 'COMM'},
+                {name: 'OIL', ticker: 'CL=F', category: 'COMM'},
+                {name: 'NAT GAS', ticker: 'NG=F', category: 'COMM'},
+                {name: 'COPPER', ticker: 'HG=F', category: 'COMM'},
+                {name: 'EUR/USD', ticker: 'EURUSD=X', category: 'FX'},
+                {name: 'GBP/USD', ticker: 'GBPUSD=X', category: 'FX'},
+                {name: 'USD/JPY', ticker: 'JPY=X', category: 'FX'},
+                {name: 'VIX', ticker: '^VIX', category: 'VOL'},
+                {name: 'SOXX', ticker: 'SOXX', category: 'SEMI'},
+                {name: 'MAGS', ticker: 'MAGS', category: 'MAG7'},
+                {name: 'CIBR', ticker: 'CIBR', category: 'CYBR'},
+                {name: 'SKYY', ticker: 'SKYY', category: 'CLD'},
+                {name: 'VGK', ticker: 'VGK', category: 'EUR'},
+                {name: 'MCHI', ticker: 'MCHI', category: 'CHN'},
+                {name: 'EWJ', ticker: 'EWJ', category: 'JPN'},
+                {name: 'EEM', ticker: 'EEM', category: 'EM'},
+                {name: 'TLT', ticker: 'TLT', category: 'UST'},
+                {name: 'LQD', ticker: 'LQD', category: 'IG'},
+                {name: 'HYG', ticker: 'HYG', category: 'HY'},
+                {name: 'TIP', ticker: 'TIP', category: 'TIPS'},
+                {name: 'VNQ', ticker: 'VNQ', category: 'REIT'},
+                {name: 'XLU', ticker: 'XLU', category: 'UTIL'},
+                {name: 'ICLN', ticker: 'ICLN', category: 'CLN'},
+                {name: 'DBA', ticker: 'DBA', category: 'AGRI'},
+                {name: 'LIT', ticker: 'LIT', category: 'LITH'}
+            ];
+            
+            let html = `<div class="panel-header mb-2"><div class="section-title">GLOBAL PERFORMANCE</div></div><div class="grid grid-cols-4 md:grid-cols-7 gap-1.5">`;
+            
+            for (const asset of assets) {
+                try {
+                    const data = await fetchTicker(asset.ticker);
+                    const change = parseFloat(data.main_info?.oneDayChange || 0);
+                    const isPos = change >= 0;
+                    const color = isPos ? 'text-bloomberg-green' : 'text-bloomberg-red';
+                   
+                    html += `
+                        <div class="panel p-2 cursor-pointer hover:border-gray-700 transition-all ${isPos ? 'positive' : 'negative'}" onclick="executeQuickCommand('DES ${asset.ticker}')">
+                            <div class="text-gray-500 text-xs mb-0.5">${asset.category}</div>
+                            <div class="text-gray-300 text-xs">${asset.name}</div>
+                            <div class="text-gray-200 font-mono text-xs mt-1">${data.main_info.currentPrice?.toFixed(2) || '--'}</div>
+                            <div class="text-xs ${color} font-mono">${isPos ? '+' : ''}${change.toFixed(2)}%</div>
+                        </div>
+                    `;
+                } catch (e) {
+                    html += `
+                        <div class="panel p-2 opacity-50">
+                            <div class="text-gray-500 text-xs">${asset.category}</div>
+                            <div class="text-gray-600 text-xs">${asset.name}</div>
+                        </div>
+                    `;
+                }
+            }
+            html += `</div>`;
+            addMessage(html);
+        }
+
+        async function loadTopNews() {
+            try {
+                const tickers = ['SPY', 'QQQ', 'DIA', 'AAPL', 'TSLA'];
+                let allNews = [];
+               
+                for (const ticker of tickers) {
+                    try {
+                        const data = await fetchTicker(ticker);
+                        if (data.recent_news) {
+                            data.recent_news.slice(0, 2).forEach(n => allNews.push({...n, source: ticker}));
+                        }
+                    } catch (e) {}
+                }
+               
+                allNews.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
+               
+                let html = `<div class="panel-header mb-2"><div class="section-title">TOP NEWS</div></div><div class="space-y-1">`;
+               
+                allNews.slice(0, 10).forEach(item => {
+                    const date = new Date(item.pubDate);
+                    const hoursAgo = Math.floor((Date.now() - date) / 3600000);
+                    const timeStr = hoursAgo < 1 ? 'NOW' : hoursAgo < 24 ? `${hoursAgo}H` : `${Math.floor(hoursAgo/24)}D`;
+                   
+                    html += `
+                        <div class="news-item panel cursor-pointer flex gap-2 items-start" onclick="window.open('${item.source_url || '#'}', '_blank')">
+                            <div class="flex-shrink-0 w-8 h-8 rounded bg-gray-800 flex items-center justify-center text-xs text-bloomberg-orange font-mono">
+                                ${item.source}
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex justify-between items-start">
+                                    <div class="text-gray-300 text-xs line-clamp-1 pr-2">${item.title}</div>
+                                    <span class="text-gray-600 text-xs font-mono whitespace-nowrap">${timeStr}</span>
+                                </div>
+                                <div class="text-gray-600 text-xs mt-0.5">${item.provider}</div>
+                            </div>
+                        </div>
+                    `;
+                });
+               
+                html += `</div>`;
+                addMessage(html);
+            } catch (e) {
+                throw new Error('Failed to load news');
+            }
+        }
+
+        function loadEconomicCalendar() {
+            const events = [
+                {time: '08:30', country: 'US', indicator: 'CPI MoM', actual: '0.3%', forecast: '0.2%', previous: '0.2%', impact: 'HIGH'},
+                {time: '10:00', country: 'US', indicator: 'Retail Sales', actual: '-0.1%', forecast: '0.2%', previous: '0.4%', impact: 'MED'},
+                {time: '14:00', country: 'US', indicator: 'FOMC Minutes', actual: '--', forecast: '--', previous: '--', impact: 'HIGH'},
+                {time: '02:00', country: 'DE', indicator: 'German GDP', actual: '0.1%', forecast: '0.0%', previous: '-0.1%', impact: 'MED'},
+                {time: '04:30', country: 'UK', indicator: 'Unemployment', actual: '4.2%', forecast: '4.1%', previous: '4.0%', impact: 'MED'},
+                {time: '07:30', country: 'JP', indicator: 'Ind. Production', actual: '2.1%', forecast: '1.5%', previous: '0.8%', impact: 'LOW'},
+                {time: '09:00', country: 'CN', indicator: 'PMI Mfg', actual: '50.2', forecast: '49.8', previous: '49.0', impact: 'HIGH'},
+                {time: '11:30', country: 'AU', indicator: 'Employment', actual: '15.2K', forecast: '20.0K', previous: '-12.5K', impact: 'MED'}
+            ];
+            
+            let html = `<div class="panel-header mb-2"><div class="section-title">ECONOMIC CALENDAR</div></div>
+                <div class="overflow-x-auto">
+                <table class="w-full text-xs">
+                    <thead>
+                        <tr class="text-left text-gray-500 border-b border-gray-800">
+                            <th class="pb-1.5 font-normal">Time</th>
+                            <th class="pb-1.5 font-normal">Cnt</th>
+                            <th class="pb-1.5 font-normal">Indicator</th>
+                            <th class="pb-1.5 font-normal text-right">Act</th>
+                            <th class="pb-1.5 font-normal text-right">Fcst</th>
+                            <th class="pb-1.5 font-normal text-right">Prev</th>
+                            <th class="pb-1.5 font-normal text-center">Imp</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
+           
+            events.forEach(event => {
+                const impactColor = event.impact === 'HIGH' ? 'text-bloomberg-red' : event.impact === 'MED' ? 'text-bloomberg-yellow' : 'text-gray-500';
+               
+                html += `
+                    <tr class="border-b border-gray-800/50 hover:bg-bloomberg-orange/5">
+                        <td class="py-1.5 text-gray-500 font-mono">${event.time}</td>
+                        <td class="py-1.5 text-gray-400">${event.country}</td>
+                        <td class="py-1.5 text-gray-300">${event.indicator}</td>
+                        <td class="py-1.5 text-right text-gray-300 font-mono">${event.actual}</td>
+                        <td class="py-1.5 text-right text-gray-500 font-mono">${event.forecast}</td>
+                        <td class="py-1.5 text-right text-gray-500 font-mono">${event.previous}</td>
+                        <td class="py-1.5 text-center"><span class="${impactColor} text-xs">${event.impact}</span></td>
+                    </tr>
+                `;
+            });
+           
+            html += `</tbody></table></div>
+            <div class="grid grid-cols-3 gap-2 mt-3">
+                <div class="panel p-2 text-center"><div class="text-gray-600 text-xs">HIGH</div><div class="text-bloomberg-red font-mono">3</div></div>
+                <div class="panel p-2 text-center"><div class="text-gray-600 text-xs">MEDIUM</div><div class="text-bloomberg-yellow font-mono">5</div></div>
+                <div class="panel p-2 text-center"><div class="text-gray-600 text-xs">LOW</div><div class="text-gray-500 font-mono">2</div></div>
+            </div>`;
+           
+            addMessage(html);
+        }
+
+        async function loadSectorPerformance() {
+            const sectors = [
+                {name: 'TECH', ticker: 'XLK', full: 'Technology'},
+                {name: 'FIN', ticker: 'XLF', full: 'Financials'},
+                {name: 'HLTH', ticker: 'XLV', full: 'Healthcare'},
+                {name: 'ENRG', ticker: 'XLE', full: 'Energy'},
+                {name: 'DISC', ticker: 'XLY', full: 'Consumer Disc'},
+                {name: 'STPL', ticker: 'XLP', full: 'Staples'},
+                {name: 'INDU', ticker: 'XLI', full: 'Industrials'},
+                {name: 'MATL', ticker: 'XLB', full: 'Materials'},
+                {name: 'UTIL', ticker: 'XLU', full: 'Utilities'},
+                {name: 'REIT', ticker: 'XLRE', full: 'Real Estate'},
+                {name: 'COMM', ticker: 'XLC', full: 'Communication'}
+            ];
+            
+            let html = `<div class="panel-header mb-2"><div class="section-title">SECTOR PERFORMANCE</div></div><div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 mb-4">`;
+            
+            const results = [];
+            for (const sector of sectors) {
+                try {
+                    const data = await fetchTicker(sector.ticker);
+                    results.push({...sector, data, success: true});
+                } catch (e) {
+                    results.push({...sector, error: true});
+                }
+            }
+            
+            results.sort((a, b) => {
+                if (!a.success) return 1;
+                if (!b.success) return -1;
+                return parseFloat(b.data.main_info?.oneDayChange || 0) - parseFloat(a.data.main_info?.oneDayChange || 0);
+            });
+            
+            results.forEach((sector, idx) => {
+                if (!sector.success) {
+                    html += `<div class="panel p-2 opacity-50"><div class="text-gray-500 text-xs">${sector.name}</div></div>`;
+                } else {
+                    const change = parseFloat(sector.data.main_info?.oneDayChange || 0);
+                    const color = change >= 0 ? 'text-bloomberg-green' : 'text-bloomberg-red';
+                   
+                    html += `
+                        <div class="metric-card p-2.5 cursor-pointer hover:border-gray-700 transition-all ${change >= 0 ? 'positive' : 'negative'}" onclick="executeQuickCommand('DES ${sector.ticker}')">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="text-gray-500 text-xs">#${idx + 1} ${sector.name}</span>
+                                <span class="${color} text-xs font-mono">${change >= 0 ? '+' : ''}${change.toFixed(2)}%</span>
+                            </div>
+                            <div class="flex justify-between text-xs">
+                                <span class="text-gray-600">${sector.ticker}</span>
+                                <span class="text-gray-400 font-mono">$${sector.data.main_info.currentPrice?.toFixed(2)}</span>
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+            html += `</div>`;
+            
+            // Add sector news
+            html += `<div class="panel-header mb-2"><div class="section-title">SECTOR NEWS</div></div><div class="space-y-1">`;
+            
+            for (let i = 0; i < Math.min(sectors.length, 11); i++) {
+                const sector = sectors[i];
+                try {
+                    const data = await fetchTicker(sector.ticker);
+                    if (data.recent_news && data.recent_news.length > 0) {
+                        const news = data.recent_news[0];
+                        const date = new Date(news.pubDate);
+                        const hoursAgo = Math.floor((Date.now() - date) / 3600000);
+                        const timeStr = hoursAgo < 1 ? 'NOW' : hoursAgo < 24 ? `${hoursAgo}H` : `${Math.floor(hoursAgo/24)}D`;
+                        
+                        html += `
+                            <div class="news-item panel cursor-pointer flex gap-2 items-start" onclick="window.open('${news.source_url || '#'}', '_blank')">
+                                <div class="flex-shrink-0 w-8 h-8 rounded bg-gray-800 flex items-center justify-center text-xs text-bloomberg-orange font-mono">
+                                    ${sector.ticker}
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex justify-between items-start">
+                                        <div class="text-gray-300 text-xs line-clamp-1 pr-2">${news.title}</div>
+                                        <span class="text-gray-600 text-xs font-mono whitespace-nowrap">${timeStr}</span>
+                                    </div>
+                                    <div class="text-gray-600 text-xs mt-0.5">${news.provider} • ${sector.full}</div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                } catch(e) {}
+            }
+            html += `</div>`;
+            
+            addMessage(html);
+        }
+
+        async function loadCompanyDescription(ticker) {
+            const data = await fetchTicker(ticker);
+            const info = data.main_info;
+            const price = data.price_performance;
+            const change = parseFloat(info.oneDayChange || 0);
+            const isPos = change >= 0;
+            
+            // Determine recommendation class
+            let recClass = 'neutral';
+            let recKey = (data.price_targets.recommendationKey || '').toLowerCase();
+            if (recKey.includes('buy')) recClass = 'buy';
+            else if (recKey.includes('sell')) recClass = 'sell';
+            else if (recKey.includes('hold')) recClass = 'hold';
+           
+            let newsHtml = '';
+            if (data.recent_news && data.recent_news.length > 0) {
+                newsHtml = `<div class="mt-3"><div class="text-gray-500 text-xs mb-1.5 uppercase">Recent News</div><div class="space-y-1">`;
+                data.recent_news.slice(0, 6).forEach(item => {
+                    const date = new Date(item.pubDate);
+                    const hoursAgo = Math.floor((Date.now() - date) / 3600000);
+                    const timeStr = hoursAgo < 1 ? 'now' : hoursAgo < 24 ? `${hoursAgo}h` : `${Math.floor(hoursAgo/24)}d`;
+                   
+                    newsHtml += `
+                        <div class="condensed-news panel cursor-pointer hover:border-gray-700" onclick="window.open('${item.source_url || '#'}', '_blank')">
+                            <div class="flex justify-between items-start gap-2">
+                                <div class="text-gray-300 text-xs line-clamp-1 flex-1">${item.title}</div>
+                                <span class="text-gray-600 text-xs font-mono whitespace-nowrap">${timeStr}</span>
+                            </div>
+                        </div>
+                    `;
+                });
+                newsHtml += `</div></div>`;
+            }
+           
+            let html = `
+                <div class="des-header mb-3">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                        <div>
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="text-gray-300 font-mono text-lg">${info.shortName}</span>
+                                <span class="px-1.5 py-0.5 bg-bloomberg-orange/20 text-bloomberg-orange text-xs rounded font-mono">${ticker}</span>
+                                <span class="text-gray-500 text-xs">${info.sector || 'N/A'}</span>
+                            </div>
+                            <div class="text-gray-600 text-xs">${data.company_info.industry || ''} • ${data.company_info.city || ''}</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-2xl text-gray-200 font-mono">$${info.currentPrice?.toFixed(2)}</div>
+                            <div class="text-sm ${isPos ? 'text-bloomberg-green' : 'text-bloomberg-red'} font-mono">
+                                ${isPos ? '+' : ''}${change.toFixed(2)}%
+                            </div>
+                        </div>
+                    </div>
+                </div>
+               
+                <div class="grid grid-cols-3 md:grid-cols-6 gap-2 mb-3">
+                    <div class="metric-card p-2 text-center ${isPos ? 'positive' : 'negative'}">
+                        <div class="text-gray-600 text-xs">Mkt Cap</div>
+                        <div class="text-gray-300 font-mono text-sm">${info.marketCap || '--'}</div>
+                    </div>
+                    <div class="metric-card p-2 text-center ${info.PE > 0 ? 'positive' : info.PE < 0 ? 'negative' : 'neutral'}">
+                        <div class="text-gray-600 text-xs">P/E</div>
+                        <div class="text-gray-300 font-mono text-sm">${info.PE?.toFixed(1) || '--'}</div>
+                    </div>
+                    <div class="metric-card p-2 text-center ${info.forwardPE > 0 ? 'positive' : info.forwardPE < 0 ? 'negative' : 'neutral'}">
+                        <div class="text-gray-600 text-xs">Fwd P/E</div>
+                        <div class="text-gray-300 font-mono text-sm">${info.forwardPE?.toFixed(1) || '--'}</div>
+                    </div>
+                    <div class="metric-card p-2 text-center ${isPos ? 'positive' : 'negative'}">
+                        <div class="text-gray-600 text-xs">P/S</div>
+                        <div class="text-gray-300 font-mono text-sm">${info.PS?.toFixed(1) || '--'}</div>
+                    </div>
+                    <div class="metric-card p-2 text-center ${isPos ? 'positive' : 'negative'}">
+                        <div class="text-gray-600 text-xs">Target</div>
+                        <div class="text-gray-300 font-mono text-sm">$${data.price_targets.targetMeanPrice?.toFixed(0) || '--'}</div>
+                    </div>
+                    <div class="metric-card p-2 text-center ${recClass}">
+                        <div class="text-gray-600 text-xs">Rec</div>
+                        <div class="text-gray-300 text-xs uppercase">${data.price_targets.recommendationKey || '--'}</div>
+                    </div>
+                </div>
+               
+                <div class="fa-section mb-3">
+                    <div class="flex items-center gap-2 text-gray-500 text-xs mb-2 uppercase">
+                        <i class="fas fa-chart-line text-bloomberg-orange"></i>
+                        <span>Price Performance</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3 text-xs">
+                        <div>
+                            <div class="flex justify-between text-gray-600 mb-1">
+                                <span>Day Range</span>
+                                <span class="text-gray-400 font-mono">$${price.dayLow?.toFixed(2)} - $${price.dayHigh?.toFixed(2)}</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: ${((info.currentPrice - price.dayLow) / (price.dayHigh - price.dayLow) * 100)}%"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-gray-600 mb-1">
+                                <span>52W Range</span>
+                                <span class="text-gray-400 font-mono">$${price.fiftyTwoWeekLow?.toFixed(2)} - $${price.fiftyTwoWeekHigh?.toFixed(2)}</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: ${((info.currentPrice - price.fiftyTwoWeekLow) / (price.fiftyTwoWeekHigh - price.fiftyTwoWeekLow) * 100)}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-4 gap-2 mt-3 text-xs">
+                        <div class="metric-card p-2 text-center ${parseFloat(price.change_from_50DMA || 0) >= 0 ? 'positive' : 'negative'}">
+                            <div class="text-gray-600 text-xs">50 DMA</div>
+                            <div class="text-gray-400 font-mono">$${price.fiftyDayAverage?.toFixed(2) || '--'}</div>
+                        </div>
+                        <div class="metric-card p-2 text-center ${parseFloat(price.change_from_200DMA || 0) >= 0 ? 'positive' : 'negative'}">
+                            <div class="text-gray-600 text-xs">200 DMA</div>
+                            <div class="text-gray-400 font-mono">$${price.twoHundredDayAverage?.toFixed(2) || '--'}</div>
+                        </div>
+                        <div class="metric-card p-2 text-center ${isPos ? 'positive' : 'negative'}">
+                            <div class="text-gray-600 text-xs">Volume</div>
+                            <div class="text-gray-400 font-mono">${(info.volume || 0).toLocaleString()}</div>
+                        </div>
+                        <div class="metric-card p-2 text-center ${isPos ? 'positive' : 'negative'}">
+                            <div class="text-gray-600 text-xs">Beta</div>
+                            <div class="text-gray-400 font-mono">${info.beta || '--'}</div>
+                        </div>
+                    </div>
+                </div>
+               
+                <div class="grid md:grid-cols-2 gap-2 mb-3">
+                    <div class="fa-section">
+                        <div class="flex items-center gap-2 text-gray-500 text-xs mb-2 uppercase">
+                            <i class="fas fa-balance-scale text-bloomberg-orange"></i>
+                            <span>Valuation</span>
+                        </div>
+                        <div class="space-y-1 text-xs">
+                            <div class="metric-row"><span class="text-gray-600">EV/EBITDA</span><span class="text-gray-400 font-mono">${data.valuation.enterpriseToEbitda?.toFixed(1) || '--'}</span></div>
+                            <div class="metric-row"><span class="text-gray-600">Price/Book</span><span class="text-gray-400 font-mono">${data.valuation.priceToBook?.toFixed(1) || '--'}</span></div>
+                            <div class="metric-row"><span class="text-gray-600">PEG Ratio</span><span class="text-gray-400 font-mono">${data.growth.pegRatio || '--'}</span></div>
+                            <div class="metric-row"><span class="text-gray-600">Price/Cash</span><span class="text-gray-400 font-mono">${data.valuation.priceToCashflow?.toFixed(1) || '--'}</span></div>
+                            <div class="metric-row"><span class="text-gray-600">Ent Value</span><span class="text-gray-400 font-mono">${data.valuation.enterpriseValue || '--'}</span></div>
+                            <div class="metric-row"><span class="text-gray-600">Book Val/Sh</span><span class="text-gray-400 font-mono">${data.valuation.bookValue?.toFixed(2) || '--'}</span></div>
+                        </div>
+                    </div>
+                    <div class="fa-section">
+                        <div class="flex items-center gap-2 text-gray-500 text-xs mb-2 uppercase">
+                            <i class="fas fa-heartbeat text-bloomberg-orange"></i>
+                            <span>Financial Health</span>
+                        </div>
+                        <div class="space-y-1 text-xs">
+                            <div class="metric-row"><span class="text-gray-600">Current Ratio</span><span class="text-gray-400 font-mono">${data.ratios.currentRatio?.toFixed(2) || '--'}</span></div>
+                            <div class="metric-row"><span class="text-gray-600">Quick Ratio</span><span class="text-gray-400 font-mono">${data.ratios.quickRatio?.toFixed(2) || '--'}</span></div>
+                            <div class="metric-row"><span class="text-gray-600">Debt/Equity</span><span class="text-gray-400 font-mono">${data.ratios.debtToEquity?.toFixed(2) || '--'}</span></div>
+                            <div class="metric-row"><span class="text-gray-600">Int Coverage</span><span class="text-gray-400 font-mono">${data.ratios.interestCoverage?.toFixed(1) || '--'}</span></div>
+                            <div class="metric-row"><span class="text-gray-600">Total Cash</span><span class="text-bloomberg-green font-mono">${data.debt.totalCash || '--'}</span></div>
+                            <div class="metric-row"><span class="text-gray-600">Free Cash Flow</span><span class="text-gray-400 font-mono">${data.debt.freeCashflow || '--'}</span></div>
+                        </div>
+                    </div>
+                </div>
+               
+                <div class="fa-section mb-3">
+                    <div class="flex items-center gap-2 text-gray-500 text-xs mb-2 uppercase">
+                        <i class="fas fa-rocket text-bloomberg-orange"></i>
+                        <span>Growth Metrics</span>
+                    </div>
+                    <div class="grid grid-cols-4 gap-2 text-center text-xs">
+                        <div class="metric-card p-2 ${parseFloat(data.growth.revenueGrowth || 0) >= 0 ? 'positive' : 'negative'}">
+                            <div class="text-gray-600 text-xs">Rev Growth</div>
+                            <div class="text-gray-400 font-mono">${data.growth.revenueGrowth || '--'}</div>
+                        </div>
+                        <div class="metric-card p-2 ${parseFloat(data.growth.earningsGrowth || 0) >= 0 ? 'positive' : 'negative'}">
+                            <div class="text-gray-600 text-xs">Earn Growth</div>
+                            <div class="text-gray-400 font-mono">${data.growth.earningsGrowth || '--'}</div>
+                        </div>
+                        <div class="metric-card p-2 ${parseFloat(data.growth.epsGrowth || 0) >= 0 ? 'positive' : 'negative'}">
+                            <div class="text-gray-600 text-xs">EPS Growth</div>
+                            <div class="text-gray-400 font-mono">${data.growth.epsGrowth || '--'}</div>
+                        </div>
+                        <div class="metric-card p-2 ${parseFloat(data.growth.pegRatio || 0) < 2 ? 'positive' : 'negative'}">
+                            <div class="text-gray-600 text-xs">PEG Ratio</div>
+                            <div class="text-gray-400 font-mono">${data.growth.pegRatio || '--'}</div>
+                        </div>
+                    </div>
+                </div>
+               
+                <div class="fa-section mb-3">
+                    <div class="flex items-center gap-2 text-gray-500 text-xs mb-2 uppercase">
+                        <i class="fas fa-calendar-alt text-bloomberg-orange"></i>
+                        <span>Earnings Info</span>
+                    </div>
+                    <div class="grid grid-cols-4 gap-2 text-center text-xs">
+                        <div class="metric-card p-2 ${isPos ? 'positive' : 'negative'}">
+                            <div class="text-gray-600 text-xs">EPS (TTM)</div>
+                            <div class="text-gray-400 font-mono">${data.earnings.trailingEps || '--'}</div>
+                        </div>
+                        <div class="metric-card p-2 ${isPos ? 'positive' : 'negative'}">
+                            <div class="text-gray-600 text-xs">EPS (Fwd)</div>
+                            <div class="text-gray-400 font-mono">${data.earnings.forwardEps || '--'}</div>
+                        </div>
+                        <div class="metric-card p-2 ${isPos ? 'positive' : 'negative'}">
+                            <div class="text-gray-600 text-xs">Next Date</div>
+                            <div class="text-gray-400 font-mono">${data.earnings_dates?.earningsDate || '--'}</div>
+                        </div>
+                        <div class="metric-card p-2 ${isPos ? 'positive' : 'negative'}">
+                            <div class="text-gray-600 text-xs">EPS Est</div>
+                            <div class="text-gray-400 font-mono">${data.earnings_dates?.epsEstimate || '--'}</div>
+                        </div>
+                    </div>
+                </div>
+               
+                <div class="fa-section mb-3">
+                    <div class="flex items-center gap-2 text-gray-500 text-xs mb-2 uppercase">
+                        <i class="fas fa-money-bill-wave text-bloomberg-orange"></i>
+                        <span>Dividend Info</span>
+                    </div>
+                    <div class="grid grid-cols-4 gap-2 text-center text-xs">
+                        <div class="metric-card p-2 ${isPos ? 'positive' : 'negative'}">
+                            <div class="text-gray-600 text-xs">Rate</div>
+                            <div class="text-gray-400 font-mono">$${info.dividendRate || '--'}</div>
+                        </div>
+                        <div class="metric-card p-2 ${isPos ? 'positive' : 'negative'}">
+                            <div class="text-gray-600 text-xs">Yield</div>
+                            <div class="text-bloomberg-green font-mono">${info.dividendYield ? (info.dividendYield * 100).toFixed(2) : '--'}%</div>
+                        </div>
+                        <div class="metric-card p-2 ${isPos ? 'positive' : 'negative'}">
+                            <div class="text-gray-600 text-xs">Ex-Date</div>
+                            <div class="text-gray-400 font-mono">${info.exDividendDate || '--'}</div>
+                        </div>
+                        <div class="metric-card p-2 ${isPos ? 'positive' : 'negative'}">
+                            <div class="text-gray-600 text-xs">Payout</div>
+                            <div class="text-gray-400 font-mono">${info.payoutRatio ? (info.payoutRatio * 100).toFixed(1) : '--'}%</div>
+                        </div>
+                    </div>
+                </div>
+               
+                <div class="fa-section">
+                    <div class="flex items-center gap-2 text-gray-500 text-xs mb-2 uppercase">
+                        <i class="fas fa-info-circle text-bloomberg-orange"></i>
+                        <span>Description</span>
+                    </div>
+                    <div class="description-text text-gray-500 text-xs leading-relaxed" id="desc-text">
+                        ${data.company_business.longBusinessSummary || 'No description available.'}
+                    </div>
+                    <span class="read-more" onclick="document.getElementById('desc-text').classList.toggle('expanded'); this.textContent = document.getElementById('desc-text').classList.contains('expanded') ? 'read less' : 'read more'">read more</span>
+                </div>
+               
+                ${newsHtml}
+            `;
+           
+            addMessage(html);
+        }
+
+        async function loadFinancialAnalysis(ticker) {
+            const data = await fetchTicker(ticker);
+           
+            let html = `
+                <div class="panel-header mb-2">
+                    <div class="section-title">FINANCIAL ANALYSIS: ${ticker}</div>
+                </div>
+               
+                <div class="grid md:grid-cols-2 gap-2 mb-2">
+                    <div class="fa-section">
+                        <div class="flex items-center gap-2 text-gray-500 text-xs mb-2 uppercase">
+                            <i class="fas fa-dollar-sign text-bloomberg-orange"></i>
+                            <span>Revenue Analysis</span>
+                        </div>
+                        <div class="mb-2">
+                            <div class="text-gray-600 text-xs">Total Revenue (TTM)</div>
+                            <div class="text-gray-300 font-mono text-lg">${data.growth.totalRevenue || '--'}</div>
+                        </div>
+                        <div class="space-y-1 text-xs">
+                            <div class="metric-row"><span class="text-gray-600">Revenue Growth</span><span class="text-bloomberg-green font-mono">${data.growth.revenueGrowth || '--'}</span></div>
+                            <div class="metric-row"><span class="text-gray-600">1Y Return</span><span class="text-gray-400 font-mono">${data.returns.oneYearReturn || '--'}</span></div>
+                            <div class="metric-row"><span class="text-gray-600">3Y Return</span><span class="text-gray-400 font-mono">${data.returns.threeYearReturn || '--'}</span></div>
+                        </div>
+                    </div>
+                   
+                    <div class="fa-section">
+                        <div class="flex items-center gap-2 text-gray-500 text-xs mb-2 uppercase">
+                            <i class="fas fa-chart-line text-bloomberg-orange"></i>
+                            <span>Earnings Power</span>
+                        </div>
+                        <div class="mb-2">
+                            <div class="text-gray-600 text-xs">Net Income (TTM)</div>
+                            <div class="text-gray-300 font-mono text-lg">${data.earnings.netIncomeToCommon || '--'}</div>
+                        </div>
+                        <div class="space-y-1 text-xs">
+                            <div class="metric-row"><span class="text-gray-600">Earnings Growth</span><span class="${data.growth.earningsGrowth?.includes('-') ? 'text-bloomberg-red' : 'text-bloomberg-green'} font-mono">${data.growth.earningsGrowth || '--'}</span></div>
+                            <div class="metric-row"><span class="text-gray-600">ROE</span><span class="text-gray-400 font-mono">${data.ratios.returnOnEquity || '--'}</span></div>
+                            <div class="metric-row"><span class="text-gray-600">ROA</span><span class="text-gray-400 font-mono">${data.ratios.returnOnAssets || '--'}</span></div>
+                        </div>
+                    </div>
+                </div>
+               
+                <div class="fa-section mb-2">
+                    <div class="flex items-center gap-2 text-gray-500 text-xs mb-2 uppercase">
+                        <i class="fas fa-percentage text-bloomberg-orange"></i>
+                        <span>Margin Analysis</span>
+                    </div>
+                    <div class="grid grid-cols-4 gap-2 text-center text-xs">
+                        <div>
+                            <div class="text-gray-300 font-mono text-sm">${data.returns.grossMargins || '--'}</div>
+                            <div class="text-gray-600 text-xs">Gross</div>
+                        </div>
+                        <div>
+                            <div class="text-gray-300 font-mono text-sm">${data.returns.operatingMargins || '--'}</div>
+                            <div class="text-gray-600 text-xs">Operating</div>
+                        </div>
+                        <div>
+                            <div class="text-gray-300 font-mono text-sm">${data.returns.profitMargins || '--'}</div>
+                            <div class="text-gray-600 text-xs">Profit</div>
+                        </div>
+                        <div>
+                            <div class="text-gray-300 font-mono text-sm">${data.ratios.returnOnEquity || '--'}</div>
+                            <div class="text-gray-600 text-xs">ROE</div>
+                        </div>
+                    </div>
+                </div>
+               
+                <div class="fa-section mb-2">
+                    <div class="flex items-center gap-2 text-gray-500 text-xs mb-2 uppercase">
+                        <i class="fas fa-balance-scale text-bloomberg-orange"></i>
+                        <span>Balance Sheet</span>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2 text-center text-xs">
+                        <div class="p-2 bg-bloomberg-green/5 rounded">
+                            <div class="text-bloomberg-green font-mono text-sm">${data.debt.totalCash || '--'}</div>
+                            <div class="text-gray-600">Cash</div>
+                        </div>
+                        <div class="p-2 bg-bloomberg-red/5 rounded">
+                            <div class="text-bloomberg-red font-mono text-sm">${data.debt.totalDebt || '--'}</div>
+                            <div class="text-gray-600">Debt</div>
+                        </div>
+                        <div class="p-2 bg-bloomberg-orange/5 rounded">
+                            <div class="text-bloomberg-orange font-mono text-sm">${data.debt.freeCashflow || '--'}</div>
+                            <div class="text-gray-600">FCF</div>
+                        </div>
+                    </div>
+                </div>
+               
+                <div class="fa-section">
+                    <div class="flex items-center gap-2 text-gray-500 text-xs mb-2 uppercase">
+                        <i class="fas fa-rocket text-bloomberg-orange"></i>
+                        <span>Growth Metrics</span>
+                    </div>
+                    <div class="grid grid-cols-4 gap-2 text-center text-xs">
+                        <div><div class="text-gray-400 font-mono">${data.growth.revenueGrowth || '--'}</div><div class="text-gray-600">Rev Gr</div></div>
+                        <div><div class="text-gray-400 font-mono">${data.growth.earningsGrowth || '--'}</div><div class="text-gray-600">Earn Gr</div></div>
+                        <div><div class="text-gray-400 font-mono">${data.growth.epsGrowth || '--'}</div><div class="text-gray-600">EPS Gr</div></div>
+                        <div><div class="text-gray-400 font-mono">${data.growth.pegRatio || '--'}</div><div class="text-gray-600">PEG</div></div>
+                    </div>
+                </div>
+            `;
+           
+            addMessage(html);
+        }
+
+        async function loadETFView() {
+            const etfsByTheme = {
+                'INNOVATION': [
+                    {ticker: 'ARKK', name: 'ARK Innovation', icon: 'fa-rocket'},
+                    {ticker: 'ARKQ', name: 'Auto Tech', icon: 'fa-car'},
+                    {ticker: 'QTUM', name: 'Quantum', icon: 'fa-atom'},
+                    {ticker: 'ARKW', name: 'Next Gen', icon: 'fa-globe'}
+                ],
+                'TECHNOLOGY': [
+                    {ticker: 'SMH', name: 'Semis', icon: 'fa-microchip'},
+                    {ticker: 'SKYY', name: 'Cloud', icon: 'fa-cloud'},
+                    {ticker: 'CIBR', name: 'Cyber', icon: 'fa-shield-alt'},
+                    {ticker: 'BOTZ', name: 'AI/Robotics', icon: 'fa-robot'}
+                ],
+                'HEALTHCARE': [
+                    {ticker: 'ARKG', name: 'Genomics', icon: 'fa-dna'},
+                    {ticker: 'XBI', name: 'Biotech', icon: 'fa-flask'},
+                    {ticker: 'PPH', name: 'Pharma', icon: 'fa-pills'},
+                    {ticker: 'IHI', name: 'Med Devices', icon: 'fa-heartbeat'}
+                ],
+                'FINANCE': [
+                    {ticker: 'ARKF', name: 'Fintech', icon: 'fa-credit-card'},
+                    {ticker: 'BLOK', name: 'Blockchain', icon: 'fa-link'},
+                    {ticker: 'IPAY', name: 'Mobile Pay', icon: 'fa-mobile-alt'},
+                    {ticker: 'FINX', name: 'FinTech', icon: 'fa-university'}
+                ],
+                'ENERGY & MATERIALS': [
+                    {ticker: 'ICLN', name: 'Clean Energy', icon: 'fa-solar-panel'},
+                    {ticker: 'LIT', name: 'Lithium', icon: 'fa-battery-full'},
+                    {ticker: 'URA', name: 'Uranium', icon: 'fa-radiation'},
+                    {ticker: 'COPX', name: 'Copper', icon: 'fa-coins'}
+                ],
+                'SPACE & DEFENSE': [
+                    {ticker: 'ARKX', name: 'Space', icon: 'fa-space-shuttle'},
+                    {ticker: 'ITA', name: 'Aerospace', icon: 'fa-plane'},
+                    {ticker: 'XAR', name: 'Defense', icon: 'fa-fighter-jet'},
+                    {ticker: 'PPA', name: 'Aero/Def', icon: 'fa-shield-alt'}
+                ]
+            };
+           
+            let html = `<div class="panel-header mb-2"><div class="section-title">ETF THEMES</div></div><div class="space-y-3">`;
+           
+            for (const [theme, etfs] of Object.entries(etfsByTheme)) {
+                html += `<div><div class="text-gray-500 text-xs mb-1.5 uppercase flex items-center gap-2"><i class="fas ${etfs[0].icon} text-bloomberg-orange text-xs"></i> ${theme}</div><div class="grid grid-cols-2 md:grid-cols-4 gap-2">`;
+               
+                for (const etf of etfs) {
+                    try {
+                        const data = await fetchTicker(etf.ticker);
+                        const change = parseFloat(data.main_info?.oneDayChange || 0);
+                        const color = change >= 0 ? 'text-bloomberg-green' : 'text-bloomberg-red';
+                       
+                        html += `
+                            <div class="panel p-2 cursor-pointer hover:border-gray-700 transition-all ${change >= 0 ? 'positive' : 'negative'}" onclick="executeQuickCommand('DES ${etf.ticker}')">
+                                <div class="flex justify-between items-center mb-0.5">
+                                    <span class="text-gray-400 text-xs truncate flex-1">${etf.name}</span>
+                                    <i class="fas ${etf.icon} text-gray-600 text-xs ml-1"></i>
+                                </div>
+                                <div class="text-gray-300 text-xs font-mono">${etf.ticker}</div>
+                                <div class="flex justify-between items-center mt-1">
+                                    <span class="text-gray-300 font-mono text-xs">${data.main_info.currentPrice?.toFixed(2)}</span>
+                                    <span class="${color} text-xs font-mono">${change >= 0 ? '+' : ''}${change.toFixed(2)}%</span>
+                                </div>
+                            </div>
+                        `;
+                    } catch (e) {
+                        html += `<div class="panel p-2 opacity-50"><div class="text-gray-500 text-xs truncate">${etf.name}</div><div class="text-gray-600 text-xs">${etf.ticker}</div></div>`;
+                    }
+                }
+                html += `</div></div>`;
+            }
+            html += `</div>`;
+            addMessage(html);
+        }
+
+        async function loadStockMatrix() {
+            const allTickers = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'NVDA', 'META', 'NFLX', 'AMD', 'INTC',
+                            'JPM', 'BAC', 'GS', 'MS', 'WFC',
+                            'JNJ', 'PFE', 'UNH', 'ABBV', 'MRK',
+                            'XOM', 'CVX', 'COP', 'SLB',
+                            'SPY', 'QQQ', 'DIA', 'IWM', 'VTI', 'VOO',
+                            'XLK', 'XLF', 'XLV', 'XLE', 'XLY', 'XLP', 'XLI', 'XLB', 'XLU', 'XLRE', 'XLC',
+                            'ARKK', 'ARKG', 'ARKQ', 'ARKW', 'ARKF', 'ARKX',
+                            'SOXX', 'SMH', 'SKYY', 'CIBR', 'BOTZ', 'ICLN',
+                            'GLD', 'SLV', 'USO', 'UNG', 'TLT', 'HYG', 'LQD', 'EMB',
+                            'EEM', 'EFA', 'VEA', 'VWO', 'IEFA',
+                            'BTC-USD', 'ETH-USD', '^GSPC', '^NDX', '^DJI', '^VIX', '^FTSE', '^N225'];
+            
+            let html = `
+                <div class="panel-header mb-2">
+                    <div class="section-title">STOCK MATRIX <span class="text-gray-600 font-normal">${allTickers.length} Securities</span></div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-xs data-table">
+                        <thead>
+                            <tr class="text-left border-b border-gray-800">
+                                <th>Ticker</th>
+                                <th class="text-right">Price</th>
+                                <th class="text-right">Chg%</th>
+                                <th class="text-right">MktCap</th>
+                                <th class="text-right">P/E</th>
+                                <th class="text-right">Fwd</th>
+                                <th class="text-right">P/S</th>
+                                <th class="text-center">Rec</th>
+                                <th class="text-right">PT</th>
+                                <th class="text-right">52W%</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+            
+            for (const ticker of allTickers) {
+                try {
+                    const data = await fetchTicker(ticker);
+                    const info = data.main_info;
+                    const change = parseFloat(info.oneDayChange || 0);
+                    const price = info.currentPrice || 0;
+                    const perf = data.price_performance;
+                    const priceDiff52W = perf.fiftyTwoWeekHigh ? ((price - perf.fiftyTwoWeekHigh) / perf.fiftyTwoWeekHigh * 100) : 0;
+                    
+                    const changeColor = change >= 0 ? 'text-bloomberg-green' : 'text-bloomberg-red';
+                    const recommColor = data.price_targets.recommendationKey?.toLowerCase().includes('buy') ? 'text-bloomberg-green' : 
+                                       data.price_targets.recommendationKey?.toLowerCase().includes('sell') ? 'text-bloomberg-red' : 'text-bloomberg-yellow';
+                    
+                    html += `
+                        <tr class="border-b border-gray-800/50 hover:bg-bloomberg-orange/5 cursor-pointer" onclick="executeQuickCommand('DES ${ticker}')">
+                            <td class="py-1.5 text-bloomberg-orange font-mono">${ticker}</td>
+                            <td class="py-1.5 text-right text-gray-300 font-mono">$${price.toFixed(2)}</td>
+                            <td class="py-1.5 text-right ${changeColor} font-mono">${change >= 0 ? '+' : ''}${change.toFixed(2)}%</td>
+                            <td class="py-1.5 text-right text-gray-400">${info.marketCap || '--'}</td>
+                            <td class="py-1.5 text-right text-gray-400">${info.PE?.toFixed(1) || '--'}</td>
+                            <td class="py-1.5 text-right text-gray-400">${info.forwardPE?.toFixed(1) || '--'}</td>
+                            <td class="py-1.5 text-right text-gray-400">${info.PS?.toFixed(2) || '--'}</td>
+                            <td class="py-1.5 text-center ${recommColor} uppercase text-xs">${data.price_targets.recommendationKey || '--'}</td>
+                            <td class="py-1.5 text-right text-gray-400">$${data.price_targets.targetMeanPrice?.toFixed(0) || '--'}</td>
+                            <td class="py-1.5 text-right ${priceDiff52W >= -10 ? 'text-bloomberg-green' : priceDiff52W >= -25 ? 'text-bloomberg-yellow' : 'text-bloomberg-red'}">${priceDiff52W.toFixed(1)}%</td>
+                        </tr>
+                    `;
+                } catch (e) {
+                    html += `
+                        <tr class="border-b border-gray-800/50 opacity-50">
+                            <td class="py-1.5 text-bloomberg-orange">${ticker}</td>
+                            <td colspan="9" class="py-1.5 text-bloomberg-red text-xs">ERR</td>
+                        </tr>
+                    `;
+                }
+            }
+            
+            html += `
+                        </tbody>
+                    </table>
+                </div>
+                <div class="mt-2 text-xs text-gray-600 text-right">
+                    Last update: ${new Date().toLocaleTimeString()}
+                </div>
+            `;
+            
+            addMessage(html);
+        }
+
+        async function loadCryptoView() {
+            // Top 10 crypto list
+            const topCryptos = [
+                {ticker: 'BTC-USD', name: 'Bitcoin', symbol: 'BTC'},
+                {ticker: 'ETH-USD', name: 'Ethereum', symbol: 'ETH'},
+                {ticker: 'BNB-USD', name: 'BNB', symbol: 'BNB'},
+                {ticker: 'XRP-USD', name: 'XRP', symbol: 'XRP'},
+                {ticker: 'ADA-USD', name: 'Cardano', symbol: 'ADA'},
+                {ticker: 'DOGE-USD', name: 'Dogecoin', symbol: 'DOGE'},
+                {ticker: 'SOL-USD', name: 'Solana', symbol: 'SOL'},
+                {ticker: 'DOT-USD', name: 'Polkadot', symbol: 'DOT'},
+                {ticker: 'MATIC-USD', name: 'Polygon', symbol: 'MATIC'},
+                {ticker: 'AVAX-USD', name: 'Avalanche', symbol: 'AVAX'}
+            ];
+            
+            let html = `<div class="panel-header mb-2"><div class="section-title">CRYPTO MARKET</div></div>`;
+            
+            // Top cards
+            html += `<div class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">`;
+            
+            // BTC Card
+            try {
+                const btcData = await fetchTicker('BTC-USD');
+                const btcChange = parseFloat(btcData.main_info?.oneDayChange || 0);
+                html += `
+                    <div class="crypto-card ${btcChange >= 0 ? 'positive' : 'negative'}">
+                        <div class="text-gray-600 text-xs mb-1">BTC/USD</div>
+                        <div class="text-gray-300 font-mono text-lg">$${btcData.main_info.currentPrice?.toLocaleString('en-US', {maximumFractionDigits: 0}) || '--'}</div>
+                        <div class="${btcChange >= 0 ? 'text-bloomberg-green' : 'text-bloomberg-red'} text-xs font-mono">${btcChange >= 0 ? '+' : ''}${btcChange.toFixed(2)}%</div>
+                    </div>
+                `;
+            } catch(e) {
+                html += `<div class="crypto-card"><div class="text-gray-600 text-xs">BTC/USD</div><div class="text-gray-400">--</div></div>`;
+            }
+            
+            // ETH Card
+            try {
+                const ethData = await fetchTicker('ETH-USD');
+                const ethChange = parseFloat(ethData.main_info?.oneDayChange || 0);
+                html += `
+                    <div class="crypto-card ${ethChange >= 0 ? 'positive' : 'negative'}">
+                        <div class="text-gray-600 text-xs mb-1">ETH/USD</div>
+                        <div class="text-gray-300 font-mono text-lg">$${ethData.main_info.currentPrice?.toLocaleString('en-US', {maximumFractionDigits: 0}) || '--'}</div>
+                        <div class="${ethChange >= 0 ? 'text-bloomberg-green' : 'text-bloomberg-red'} text-xs font-mono">${ethChange >= 0 ? '+' : ''}${ethChange.toFixed(2)}%</div>
+                    </div>
+                `;
+            } catch(e) {
+                html += `<div class="crypto-card"><div class="text-gray-600 text-xs">ETH/USD</div><div class="text-gray-400">--</div></div>`;
+            }
+            
+            // Total Market Cap (estimated)
+            html += `
+                <div class="crypto-card">
+                    <div class="text-gray-600 text-xs mb-1">TOTAL MKT CAP</div>
+                    <div class="text-gray-300 font-mono text-lg">$2.4T</div>
+                    <div class="text-gray-500 text-xs">Global Crypto</div>
+                </div>
+            `;
+            
+            // BTC Dominance
+            html += `
+                <div class="crypto-card">
+                    <div class="text-gray-600 text-xs mb-1">BTC DOMINANCE</div>
+                    <div class="text-gray-300 font-mono text-lg">52.3%</div>
+                    <div class="text-gray-500 text-xs">Market Share</div>
+                </div>
+            `;
+            
+            html += `</div>`;
+            
+            // Top 10 table
+            html += `
+                <div class="panel-header mb-2"><div class="section-title">TOP 10 CRYPTOCURRENCIES</div></div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-xs data-table">
+                        <thead>
+                            <tr class="text-left border-b border-gray-800">
+                                <th>#</th>
+                                <th>Name</th>
+                                <th>Symbol</th>
+                                <th class="text-right">Price</th>
+                                <th class="text-right">Change%</th>
+                                <th class="text-right">Mkt Cap</th>
+                                <th class="text-right">Volume(24h)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+            
+            let rank = 1;
+            for (const crypto of topCryptos) {
+                try {
+                    const data = await fetchTicker(crypto.ticker);
+                    const change = parseFloat(data.main_info?.oneDayChange || 0);
+                    const color = change >= 0 ? 'text-bloomberg-green' : 'text-bloomberg-red';
+                    
+                    html += `
+                        <tr class="border-b border-gray-800/50 hover:bg-bloomberg-orange/5 cursor-pointer" onclick="executeQuickCommand('DES ${crypto.ticker}')">
+                            <td class="py-1.5 text-gray-500 font-mono">${rank}</td>
+                            <td class="py-1.5 text-gray-300">${crypto.name}</td>
+                            <td class="py-1.5 text-bloomberg-orange font-mono">${crypto.symbol}</td>
+                            <td class="py-1.5 text-right text-gray-300 font-mono">$${data.main_info.currentPrice?.toLocaleString('en-US', {maximumFractionDigits: 2}) || '--'}</td>
+                            <td class="py-1.5 text-right ${color} font-mono">${change >= 0 ? '+' : ''}${change.toFixed(2)}%</td>
+                            <td class="py-1.5 text-right text-gray-400">${data.main_info.marketCap || '--'}</td>
+                            <td class="py-1.5 text-right text-gray-400">${(data.main_info.volume / 1e9).toFixed(2)}B</td>
+                        </tr>
+                    `;
+                } catch(e) {
+                    html += `
+                        <tr class="border-b border-gray-800/50 opacity-50">
+                            <td class="py-1.5 text-gray-500">${rank}</td>
+                            <td class="py-1.5 text-gray-400">${crypto.name}</td>
+                            <td class="py-1.5 text-bloomberg-orange">${crypto.symbol}</td>
+                            <td colspan="4" class="py-1.5 text-gray-600 text-xs">--</td>
+                        </tr>
+                    `;
+                }
+                rank++;
+            }
+            
+            html += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            
+            addMessage(html);
+        }
+
+        async function loadBondOutlook() {
+            let html = `<div class="panel-header mb-2"><div class="section-title">RATES OUTLOOK</div></div>`;
+            
+            // Government Rates
+            html += `<div class="fa-section mb-3"><div class="text-gray-500 text-xs mb-2 uppercase">Government Rates</div><div class="grid grid-cols-2 md:grid-cols-4 gap-2">`;
+            
+            const govRates = [
+                {name: 'US 2Y', ticker: '2YY=F'},
+                {name: 'US 10Y', ticker: 'ZN=F'},
+                {name: 'DXY', ticker: 'DX-Y.NYB'},
+                {name: 'EUR/USD', ticker: 'EURUSD=X'}
+            ];
+            
+            for (const rate of govRates) {
+                try {
+                    const data = await fetchTicker(rate.ticker);
+                    const change = parseFloat(data.main_info?.oneDayChange || 0);
+                    const isYield = rate.name.includes('Y');
+                    const displayValue = isYield ? data.main_info.currentPrice?.toFixed(2) + '%' : data.main_info.currentPrice?.toFixed(2);
+                    
+                    html += `
+                        <div class="panel p-2 text-center ${change >= 0 ? 'positive' : 'negative'}" onclick="executeQuickCommand('DES ${rate.ticker}')">
+                            <div class="text-gray-500 text-xs">${rate.name}</div>
+                            <div class="text-gray-300 font-mono text-lg">${displayValue || '--'}</div>
+                            <div class="${change >= 0 ? 'text-bloomberg-green' : 'text-bloomberg-red'} text-xs font-mono">${change >= 0 ? '+' : ''}${change.toFixed(2)}%</div>
+                        </div>
+                    `;
+                } catch(e) {
+                    html += `<div class="panel p-2 text-center opacity-50"><div class="text-gray-500 text-xs">${rate.name}</div><div class="text-gray-600">--</div></div>`;
+                }
+            }
+            html += `</div></div>`;
+            
+            // Credit Markets
+            html += `<div class="fa-section"><div class="text-gray-500 text-xs mb-2 uppercase">Credit Markets</div><div class="grid grid-cols-2 md:grid-cols-4 gap-2">`;
+            
+            const creditRates = [
+                {name: 'US IG', ticker: 'LQD', type: 'ETF'},
+                {name: 'US HY', ticker: 'HYG', type: 'ETF'},
+                {name: 'EM USD', ticker: 'EMB', type: 'ETF'},
+                {name: 'TIPS', ticker: 'TIP', type: 'ETF'}
+            ];
+            
+            for (const rate of creditRates) {
+                try {
+                    const data = await fetchTicker(rate.ticker);
+                    const change = parseFloat(data.main_info?.oneDayChange || 0);
+                    
+                    html += `
+                        <div class="panel p-2 ${change >= 0 ? 'positive' : 'negative'}" onclick="executeQuickCommand('DES ${rate.ticker}')">
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-500 text-xs">${rate.name}</span>
+                                <span class="${change >= 0 ? 'text-bloomberg-green' : 'text-bloomberg-red'} text-xs font-mono">${change >= 0 ? '+' : ''}${change.toFixed(2)}%</span>
+                            </div>
+                            <div class="text-gray-300 font-mono text-sm">$${data.main_info.currentPrice?.toFixed(2)}</div>
+                        </div>
+                    `;
+                } catch(e) {
+                    html += `<div class="panel p-2 opacity-50"><div class="text-gray-500 text-xs">${rate.name}</div><div class="text-gray-600">--</div></div>`;
+                }
+            }
+            html += `</div></div>`;
+            
+            // Spreads
+            html += `<div class="mt-3 grid grid-cols-3 gap-2 text-xs">
+                <div class="panel p-2 text-center">
+                    <div class="text-gray-600 text-xs">2s10s Spread</div>
+                    <div class="text-gray-400 font-mono">-35bps</div>
+                </div>
+                <div class="panel p-2 text-center">
+                    <div class="text-gray-600 text-xs">IG Spread</div>
+                    <div class="text-gray-400 font-mono">85bps</div>
+                </div>
+                <div class="panel p-2 text-center">
+                    <div class="text-gray-600 text-xs">HY Spread</div>
+                    <div class="text-gray-400 font-mono">320bps</div>
+                </div>
+            </div>`;
+            
+            addMessage(html);
+        }
+
+        commandInput.focus();
+        initTicker();
+    </script>
+</body>
+</html>
