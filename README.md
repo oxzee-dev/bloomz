@@ -1,7 +1,4 @@
-# bloomz
-
-
-# Mini Bloomberg Terminal - `BloomZ`
+# 📊 Mini Bloomberg Terminal - 👩🏻‍💻 `BloomZ`
 
 A web-based financial terminal interface inspired by Bloomberg terminals, providing real-time market data, financial analysis, and interactive charts.
 
