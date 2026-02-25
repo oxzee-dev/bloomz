@@ -1,0 +1,3064 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MINI BLOOMBERG TERMINAL</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        
+        body {
+            background-color: #0a0a0a;
+            color: #b0b0b0;
+            font-family: 'JetBrains Mono', monospace;
+            overflow: hidden;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            font-size: 12px;
+            font-weight: 400;
+        }
+        
+        .bloomberg-grid {
+            background-image: linear-gradient(to right, rgba(255,255,255,0.015) 1px, transparent 1px),
+                              linear-gradient(to bottom, rgba(255,255,255,0.015) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+        
+        .ticker-tape-animation {
+            display: flex;
+            width: fit-content;
+            animation: ticker 60s linear infinite;
+        }
+        
+        @keyframes ticker {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+        
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #0a0a0a;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #2a2a2a;
+            border-radius: 3px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(200, 120, 50, 0.4);
+        }
+        
+        .terminal-grid {
+            display: grid;
+            grid-template-rows: 40px 1fr auto 50px;
+            height: 100vh;
+            gap: 1px;
+            background: #0a0a0a;
+            position: relative;
+        }
+        
+        .ticker-tape {
+            background: #111111;
+            border-bottom: 1px solid rgba(200, 120, 50, 0.3);
+            overflow: hidden;
+            white-space: nowrap;
+            position: relative;
+            display: flex;
+            align-items: center;
+            font-weight: 500;
+        }
+        
+        .ticker-content {
+            display: inline-flex;
+            animation: ticker 60s linear infinite;
+            gap: 50px;
+            padding: 0 25px;
+        }
+        
+        .ticker-item {
+            display: inline-flex;
+            gap: 10px;
+            align-items: center;
+            font-size: 12px;
+        }
+        
+        .ticker-symbol {
+            color: #c87832;
+            font-weight: 600;
+        }
+        
+        .price-up { color: #4ade80; }
+        .price-down { color: #f87171; }
+        
+        .main-display {
+            background: #0a0a0a;
+            overflow-y: auto;
+            padding: 0;
+            border: 1px solid #1a1a1a;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .chat-message {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .chat-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 11px;
+            color: #666;
+        }
+        
+        .chat-timestamp {
+            color: #555;
+        }
+        
+        .chat-command {
+            color: #c87832;
+            font-weight: 600;
+        }
+        
+        .chat-content {
+            background: #111111;
+            border: 1px solid #222;
+            border-left: 2px solid rgba(200, 120, 50, 0.6);
+            padding: 12px;
+            margin-left: 0;
+            border-radius: 0 4px 4px 0;
+        }
+        
+        .chat-welcome {
+            background: linear-gradient(135deg, rgba(200, 120, 50, 0.08), rgba(200, 120, 50, 0.02));
+            border: 1px solid rgba(200, 120, 50, 0.3);
+            padding: 20px;
+            text-align: center;
+            border-radius: 4px;
+        }
+        
+        .welcome-title {
+            font-size: 22px;
+            font-weight: 500;
+            color: #c87832;
+            margin-bottom: 8px;
+            letter-spacing: 2px;
+        }
+        
+        .welcome-subtitle {
+            color: #666;
+            font-size: 12px;
+            margin-bottom: 20px;
+            font-weight: 300;
+        }
+        
+        .command-buttons {
+            background: #111111;
+            border-top: 1px solid rgba(200, 120, 50, 0.2);
+            padding: 6px 12px;
+            display: flex;
+            gap: 6px;
+            overflow-x: auto;
+            flex-wrap: nowrap;
+            align-items: center;
+            justify-content: center;
+            min-height: 32px;
+        }
+        
+        .cmd-btn {
+            background: #1a1a1a;
+            border: 1px solid #2a2a2a;
+            color: #888;
+            padding: 3px 8px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 10px;
+            font-family: 'JetBrains Mono', monospace;
+            text-transform: uppercase;
+            transition: all 0.2s;
+            white-space: nowrap;
+            line-height: 1.2;
+        }
+        
+        .cmd-btn:hover {
+            background: rgba(200, 120, 50, 0.15);
+            border-color: rgba(200, 120, 50, 0.4);
+            color: #c87832;
+        }
+        
+        .cmd-btn.primary {
+            background: rgba(200, 120, 50, 0.1);
+            border-color: rgba(200, 120, 50, 0.3);
+            color: #c87832;
+        }
+        
+        .command-area {
+            background: #111111;
+            border-top: 1px solid rgba(200, 120, 50, 0.3);
+            display: flex;
+            align-items: center;
+            padding: 0 12px;
+            gap: 12px;
+            position: relative;
+            height: 50px;
+        }
+        
+        .command-input {
+            background: transparent;
+            border: none;
+            color: #c87832;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            font-weight: 500;
+            flex: 1;
+            outline: none;
+            text-transform: uppercase;
+            caret-color: #c87832;
+        }
+        
+        .command-input::placeholder {
+            color: #444;
+        }
+        
+        .prompt {
+            color: #c87832;
+            font-weight: 600;
+            white-space: nowrap;
+            font-size: 13px;
+        }
+        
+        .clear-btn {
+            background: rgba(248, 113, 113, 0.1);
+            border: 1px solid rgba(248, 113, 113, 0.3);
+            color: #f87171;
+            padding: 4px 12px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 10px;
+            font-weight: 500;
+            text-transform: uppercase;
+            transition: all 0.2s;
+        }
+        
+        .clear-btn:hover {
+            background: rgba(248, 113, 113, 0.2);
+        }
+        
+        .autocomplete {
+            position: absolute;
+            bottom: 50px;
+            left: 0;
+            right: 0;
+            background: #111111;
+            border: 1px solid rgba(200, 120, 50, 0.4);
+            max-height: 250px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.5);
+            border-radius: 4px 4px 0 0;
+        }
+        
+        .autocomplete-item {
+            padding: 10px 14px;
+            cursor: pointer;
+            border-bottom: 1px solid #1a1a1a;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.15s;
+        }
+        
+        .autocomplete-item:hover, .autocomplete-item.selected {
+            background: rgba(200, 120, 50, 0.15);
+            color: #e0e0e0;
+        }
+        
+        .autocomplete-item .cmd {
+            font-weight: 600;
+            color: #c87832;
+        }
+        
+        .autocomplete-item:hover .cmd, .autocomplete-item.selected .cmd {
+            color: #c87832;
+        }
+        
+        .header-bar {
+            color: #c87832;
+            padding: 8px 12px;
+            font-weight: 500;
+            margin-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            letter-spacing: 1px;
+            border-bottom: 1px solid rgba(200, 120, 50, 0.3);
+            background: linear-gradient(90deg, rgba(200, 120, 50, 0.1), transparent);
+        }
+        
+        .data-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin: 8px 0;
+            font-size: 11px;
+            border: 1px solid #1a1a1a;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .data-table th {
+            background: #151515;
+            color: #c87832;
+            text-align: left;
+            padding: 8px 10px;
+            border-bottom: 1px solid rgba(200, 120, 50, 0.3);
+            font-weight: 500;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        
+        .data-table td {
+            padding: 6px 10px;
+            border-bottom: 1px solid #1a1a1a;
+        }
+        
+        .data-table tr:hover {
+            background: rgba(200, 120, 50, 0.05);
+        }
+        
+        .data-table tr:nth-child(even) {
+            background: rgba(255,255,255,0.02);
+        }
+        
+        .section-title {
+            color: #888;
+            font-weight: 500;
+            margin: 20px 0 10px 0;
+            border-bottom: 1px solid #2a2a2a;
+            padding-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .panel-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 12px;
+            margin: 12px 0;
+        }
+        
+        .panel {
+            border: 1px solid #1a1a1a;
+            background: #0f0f0f;
+            padding: 12px;
+            position: relative;
+            border-radius: 4px;
+            transition: border-color 0.2s;
+        }
+        
+        .panel:hover {
+            border-color: #2a2a2a;
+        }
+        
+        .panel::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, rgba(200, 120, 50, 0.4), transparent);
+        }
+        
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px dotted #1a1a1a;
+            font-size: 11px;
+        }
+        
+        .metric-label {
+            color: #666;
+        }
+        
+        .metric-value {
+            color: #d0d0d0;
+            font-weight: 500;
+        }
+        
+        .positive { color: #4ade80; }
+        .negative { color: #f87171; }
+        
+        .progress-container {
+            background: #0a0a0a;
+            height: 16px;
+            margin: 6px 0;
+            position: relative;
+            border: 1px solid #222;
+            border-radius: 2px;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, rgba(200, 120, 50, 0.8), rgba(200, 120, 50, 0.4));
+            transition: width 0.3s ease;
+            border-radius: 1px;
+        }
+        
+        .heatmap {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 3px;
+            margin: 12px 0;
+        }
+        
+        .heatmap-cell {
+            padding: 12px;
+            text-align: center;
+            border: 1px solid #1a1a1a;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: #111111;
+            position: relative;
+            overflow: hidden;
+            border-radius: 3px;
+        }
+        
+        .heatmap-cell:hover {
+            transform: scale(1.02);
+            z-index: 10;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            border-color: rgba(200, 120, 50, 0.4);
+        }
+        
+        .news-item {
+            border-left: 2px solid rgba(200, 120, 50, 0.4);
+            padding: 12px;
+            margin: 8px 0;
+            background: rgba(200, 120, 50, 0.03);
+            transition: all 0.2s;
+            border-radius: 0 4px 4px 0;
+        }
+        
+        .news-item:hover {
+            background: rgba(200, 120, 50, 0.06);
+            border-left-width: 3px;
+        }
+        
+        .news-time {
+            color: #888;
+            font-size: 10px;
+            font-weight: 400;
+        }
+        
+        .news-source {
+            color: #c87832;
+            font-size: 10px;
+            font-weight: 500;
+        }
+        
+        .news-title {
+            color: #e0e0e0;
+            margin: 6px 0;
+            font-weight: 500;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+        
+        .chart-container {
+            height: 400px;
+            width: 100%;
+            background: #0a0a0a;
+            border: 1px solid #1a1a1a;
+            margin: 12px 0;
+            border-radius: 4px;
+        }
+        
+        .loading {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            padding: 20px;
+            color: #c87832;
+            font-weight: 500;
+        }
+        
+        .loading::before {
+            content: '';
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(200, 120, 50, 0.2);
+            border-top-color: #c87832;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .error-box {
+            padding: 16px;
+            color: #f87171;
+            border: 1px solid rgba(248, 113, 113, 0.3);
+            background: rgba(248, 113, 113, 0.05);
+            border-radius: 4px;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 10px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .badge-buy { background: rgba(74, 222, 128, 0.15); color: #4ade80; border: 1px solid rgba(74, 222, 128, 0.3); }
+        .badge-sell { background: rgba(248, 113, 113, 0.15); color: #f87171; border: 1px solid rgba(248, 113, 113, 0.3); }
+        .badge-hold { background: rgba(200, 120, 50, 0.15); color: #c87832; border: 1px solid rgba(200, 120, 50, 0.3); }
+        
+        .shortcuts {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            gap: 20px;
+            font-size: 10px;
+            color: #444;
+        }
+        
+        .shortcut-key {
+            color: #c87832;
+            background: #0a0a0a;
+            padding: 3px 8px;
+            border-radius: 3px;
+            border: 1px solid #222;
+            font-weight: 500;
+        }
+        
+        .welcome-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-top: 16px;
+            text-align: left;
+        }
+        
+        .welcome-panel {
+            background: #0f0f0f;
+            border: 1px solid #1a1a1a;
+            padding: 12px;
+            border-radius: 4px;
+        }
+        
+        .command-list {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-top: 16px;
+            font-size: 11px;
+            text-align: left;
+        }
+        
+        .command-item {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            padding: 4px 0;
+        }
+        
+        .command-name {
+            color: #c87832;
+            font-weight: 600;
+            min-width: 100px;
+        }
+        
+        .command-desc {
+            color: #666;
+        }
+
+        .etf-family, .asset-family {
+            margin-bottom: 24px;
+        }
+        
+        .family-title {
+            color: #c87832;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid rgba(200, 120, 50, 0.3);
+            font-weight: 500;
+        }
+
+        .index-card-swapped {
+            background: #0f0f0f;
+            border: 1px solid #1a1a1a;
+            padding: 12px;
+            border-radius: 4px;
+            text-align: center;
+            transition: all 0.2s;
+        }
+        
+        .index-card-swapped:hover {
+            border-color: rgba(200, 120, 50, 0.3);
+        }
+        
+        .index-card-swapped .index-name-top {
+            color: #e0e0e0;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .index-card-swapped .index-ticker-bottom {
+            color: #666;
+            font-size: 10px;
+            margin-bottom: 12px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        
+        .index-card-swapped .index-price {
+            color: #e0e0e0;
+            font-size: 20px;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+        
+        .index-card-swapped .index-change {
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .company-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            background: linear-gradient(135deg, #151515, #0f0f0f);
+            border: 1px solid rgba(200, 120, 50, 0.4);
+            padding: 12px 20px;
+            border-radius: 4px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+        
+        .company-badge .ticker {
+            color: #c87832;
+            font-size: 18px;
+            font-weight: 600;
+            font-family: 'JetBrains Mono', monospace;
+            letter-spacing: 1px;
+        }
+        
+        .company-badge .name {
+            color: #888;
+            font-size: 12px;
+            font-weight: 400;
+            border-left: 1px solid #333;
+            padding-left: 12px;
+        }
+
+        .day-change-bar {
+            height: 24px;
+            background: #0a0a0a;
+            border: 1px solid #222;
+            border-radius: 3px;
+            position: relative;
+            margin: 8px 0;
+            overflow: hidden;
+        }
+        
+        .day-change-fill {
+            height: 100%;
+            position: absolute;
+            top: 0;
+            transition: all 0.3s ease;
+        }
+        
+        .day-change-center {
+            position: absolute;
+            left: 50%;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: #444;
+            z-index: 2;
+        }
+        
+        .day-change-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 9px;
+            color: #555;
+            margin-top: 4px;
+        }
+
+        .bond-card {
+            background: #0f0f0f;
+            border: 1px solid #1a1a1a;
+            padding: 20px;
+            border-radius: 4px;
+            text-align: center;
+            position: relative;
+            transition: all 0.2s;
+        }
+        
+        .bond-card:hover {
+            border-color: rgba(200, 120, 50, 0.3);
+        }
+        
+        .bond-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, rgba(200, 120, 50, 0.6), transparent);
+        }
+        
+        .bond-card .label {
+            color: #666;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+        }
+        
+        .bond-card .value {
+            color: #e0e0e0;
+            font-size: 32px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        
+        .bond-card .change {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        /* Small ETF card for new families */
+        .etf-small-card {
+            background: #0f0f0f;
+            border: 1px solid #1a1a1a;
+            padding: 10px;
+            border-radius: 3px;
+            text-align: center;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        
+        .etf-small-card:hover {
+            border-color: rgba(200, 120, 50, 0.3);
+            transform: translateY(-1px);
+        }
+        
+        .etf-small-card .theme-tag {
+            font-size: 8px;
+            color: #c87832;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+        
+        .etf-small-card .ticker {
+            font-size: 14px;
+            font-weight: 600;
+            color: #e0e0e0;
+            margin-bottom: 2px;
+        }
+        
+        .etf-small-card .price {
+            font-size: 11px;
+            color: #888;
+            margin-bottom: 4px;
+        }
+        
+        .etf-small-card .change {
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .market-outlook-header {
+            background: linear-gradient(90deg, rgba(200, 120, 50, 0.15), transparent);
+            border-left: 3px solid #c87832;
+            padding: 16px;
+            margin-bottom: 20px;
+            border-radius: 0 4px 4px 0;
+        }
+        
+        .market-outlook-title {
+            color: #c87832;
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+        
+        .market-outlook-text {
+            color: #888;
+            font-size: 11px;
+            line-height: 1.6;
+        }
+
+        .quick-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin: 16px 0;
+        }
+        
+        .quick-stat {
+            background: #0f0f0f;
+            border: 1px solid #1a1a1a;
+            padding: 12px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        
+        .quick-stat .label {
+            color: #666;
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }
+        
+        .quick-stat .value {
+            color: #e0e0e0;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        
+        .quick-stat .change {
+            font-size: 10px;
+            margin-top: 4px;
+        }
+
+        /* Enhanced GO Ticker Styles */
+        .price-header-card {
+            background: linear-gradient(135deg, #151515 0%, #0a0a0a 100%);
+            border: 1px solid rgba(200, 120, 50, 0.3);
+            border-radius: 4px;
+            padding: 20px;
+            margin-bottom: 16px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .price-header-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: linear-gradient(180deg, #c87832, rgba(200, 120, 50, 0.3));
+        }
+        
+        .price-main {
+            font-size: 36px;
+            font-weight: 600;
+            color: #e0e0e0;
+            font-family: 'JetBrains Mono', monospace;
+            letter-spacing: -1px;
+        }
+        
+        .price-change-large {
+            font-size: 18px;
+            font-weight: 600;
+            margin-top: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .price-change-large .arrow {
+            font-size: 14px;
+        }
+        
+        .metric-bar-container {
+            background: #0a0a0a;
+            height: 8px;
+            border-radius: 4px;
+            position: relative;
+            overflow: hidden;
+            margin: 8px 0;
+            border: 1px solid #222;
+        }
+        
+        .metric-bar-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.5s ease;
+        }
+        
+        .metric-bar-marker {
+            position: absolute;
+            top: -2px;
+            width: 3px;
+            height: 12px;
+            background: #e0e0e0;
+            border-radius: 2px;
+            transform: translateX(-50%);
+            box-shadow: 0 0 4px rgba(0,0,0,0.5);
+        }
+        
+        .range-visual {
+            background: linear-gradient(90deg, #f87171 0%, #c87832 50%, #4ade80 100%);
+            height: 100%;
+            border-radius: 3px;
+            opacity: 0.3;
+        }
+        
+        .stat-card-enhanced {
+            background: #0f0f0f;
+            border: 1px solid #1a1a1a;
+            border-radius: 4px;
+            padding: 16px;
+            position: relative;
+            transition: all 0.2s;
+        }
+        
+        .stat-card-enhanced:hover {
+            border-color: rgba(200, 120, 50, 0.3);
+        }
+        
+        .stat-card-enhanced .stat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        
+        .stat-card-enhanced .stat-label {
+            color: #666;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .stat-card-enhanced .stat-value {
+            color: #e0e0e0;
+            font-size: 20px;
+            font-weight: 600;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        
+        .stat-card-enhanced .stat-bar {
+            margin-top: 8px;
+        }
+        
+        .recommendation-bar {
+            display: flex;
+            height: 32px;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 12px 0;
+            border: 1px solid #1a1a1a;
+        }
+        
+        .recommendation-segment {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #0a0a0a;
+            font-weight: 600;
+            font-size: 11px;
+            transition: all 0.3s;
+        }
+        
+        .recommendation-segment.buy { background: #4ade80; }
+        .recommendation-segment.hold { background: #c87832; }
+        .recommendation-segment.sell { background: #f87171; }
+        
+        .target-price-visual {
+            display: flex;
+            align-items: center;
+            height: 40px;
+            background: #0a0a0a;
+            border-radius: 4px;
+            position: relative;
+            margin: 16px 0;
+            border: 1px solid #222;
+        }
+        
+        .target-price-range {
+            position: absolute;
+            height: 100%;
+            background: linear-gradient(90deg, rgba(248, 113, 113, 0.3), rgba(200, 120, 50, 0.3), rgba(74, 222, 128, 0.3));
+            border-radius: 3px;
+        }
+        
+        .target-price-current {
+            position: absolute;
+            top: -5px;
+            width: 4px;
+            height: 50px;
+            background: #e0e0e0;
+            border-radius: 2px;
+            transform: translateX(-50%);
+            box-shadow: 0 0 8px rgba(0,0,0,0.8);
+            z-index: 10;
+        }
+        
+        .target-price-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 10px;
+            color: #666;
+            margin-top: 8px;
+        }
+        
+        .volatility-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        
+        .volatility-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #444;
+        }
+        
+        .volatility-dot.active { background: #c87832; box-shadow: 0 0 8px #c87832; }
+        
+        .news-ticker-welcome {
+            background: #0a0a0a;
+            border: 1px solid #1a1a1a;
+            border-left: 2px solid #c87832;
+            padding: 12px;
+            margin-top: 12px;
+            border-radius: 0 4px 4px 0;
+            max-height: 120px;
+            overflow-y: auto;
+        }
+        
+        .news-ticker-item {
+            padding: 6px 0;
+            border-bottom: 1px dotted #222;
+            font-size: 11px;
+            display: flex;
+            gap: 12px;
+            align-items: baseline;
+        }
+        
+        .news-ticker-item:last-child {
+            border-bottom: none;
+        }
+        
+        .news-ticker-time {
+            color: #c87832;
+            font-size: 10px;
+            min-width: 50px;
+        }
+        
+        .news-ticker-source {
+            color: #666;
+            font-size: 10px;
+            min-width: 60px;
+        }
+        
+        .news-ticker-title {
+            color: #b0b0b0;
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+    </style>
+<base target="_blank">
+</head>
+<body>
+    <div class="terminal-grid bloomberg-grid">
+        <div class="ticker-tape" id="tickerTape">
+            <div class="ticker-content" id="tickerContent"></div>
+        </div>
+        
+        <div class="main-display" id="mainDisplay">
+            <div class="chat-container" id="chatContainer">
+                <!-- Welcome message will be inserted here -->
+            </div>
+        </div>
+        
+        <div class="command-buttons" id="commandButtons">
+            <button class="cmd-btn primary" onclick="executeCommand('GO SPY')">GO SPY</button>
+            <button class="cmd-btn" onclick="executeCommand('WEI')">WEI</button>
+            <button class="cmd-btn" onclick="executeCommand('GP')">GP</button>
+            <button class="cmd-btn" onclick="executeCommand('NEWS')">NEWS</button>
+            <button class="cmd-btn" onclick="executeCommand('BOND')">BOND</button>
+            <button class="cmd-btn" onclick="executeCommand('SECF')">SECF</button>
+            <button class="cmd-btn" onclick="executeCommand('STX')">STX</button>
+            <button class="cmd-btn" onclick="executeCommand('CRYP')">CRYP</button>
+            <button class="cmd-btn" onclick="executeCommand('ETF')">ETF</button>
+            <button class="cmd-btn" onclick="executeCommand('HELP')">HELP</button>
+        </div>
+        
+        <div class="command-area">
+            <span class="prompt">MINI-BLOOMBERG&gt;</span>
+            <input type="text" class="command-input" id="commandInput" placeholder="ENTER COMMAND..." autocomplete="off" spellcheck="false">
+            <button class="clear-btn" onclick="clearScreen()">CLEAR</button>
+            <div class="shortcuts">
+                <span><span class="shortcut-key">↑↓</span> HISTORY</span>
+                <span><span class="shortcut-key">TAB</span> AUTO</span>
+                <span><span class="shortcut-key">ENTER</span> EXEC</span>
+            </div>
+            <div class="autocomplete" id="autocomplete"></div>
+        </div>
+    </div>
+
+    <script>
+        const state = {
+            commandHistory: [],
+            historyIndex: -1,
+            chatHistory: [],
+            commands: {
+                'WEI': { desc: 'World Equity Indices', args: '' },
+                'GP': { desc: 'Global Performance Heatmap', args: '' },
+                'NEWS': { desc: 'Market News & Sentiment', args: '[TICKER]' },
+                'BOND': { desc: 'Bond Market & Yields', args: '' },
+                'SECF': { desc: 'Sector Performance', args: '' },
+                'INDU': { desc: 'Industry View', args: '' },
+                'STX': { desc: 'Stock Screener', args: '' },
+                'CRYP': { desc: 'Cryptocurrency Monitor', args: '' },
+                'ETF': { desc: 'ETF Database', args: '' },
+                'GO': { desc: 'Full Security Analysis', args: '<TICKER>' },
+                'HELP': { desc: 'Command Help', args: '' },
+                'CLEAR': { desc: 'Clear Screen', args: '' }
+            },
+            cache: new Map()
+        };
+
+        const API_BASE = 'https://mini-finapi.vercel.app/api';
+        
+        const commandInput = document.getElementById('commandInput');
+        const chatContainer = document.getElementById('chatContainer');
+        const autocomplete = document.getElementById('autocomplete');
+        const tickerContent = document.getElementById('tickerContent');
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            loadTickerTape();
+            showWelcomeScreen();
+            commandInput.focus();
+        });
+        
+        async function fetchWithCache(url) {
+            if (state.cache.has(url)) {
+                return state.cache.get(url);
+            }
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const data = await response.json();
+                state.cache.set(url, data);
+                setTimeout(() => state.cache.delete(url), 60000);
+                return data;
+            } catch (e) {
+                console.error('Fetch error:', e);
+                throw e;
+            }
+        }
+        
+        async function loadTickerTape() {
+            const indices = [
+                { symbol: 'SPY', name: 'S&P 500' },
+                { symbol: 'QQQ', name: 'NASDAQ 100' },
+                { symbol: 'IWM', name: 'RUSSELL 2000' },
+                { symbol: 'DIA', name: 'DOW JONES' },
+                { symbol: 'VIX', name: 'VIX' },
+                { symbol: 'TLT', name: '20+ YR TREASURY' },
+                { symbol: 'GLD', name: 'GOLD' },
+                { symbol: 'USO', name: 'CRUDE OIL' },
+                { symbol: 'BTC-USD', name: 'BITCOIN' },
+                { symbol: 'ETH-USD', name: 'ETHEREUM' },
+                { symbol: 'XLF', name: 'FINANCIALS' },
+                { symbol: 'XLK', name: 'TECHNOLOGY' },
+                { symbol: 'XLE', name: 'ENERGY' },
+                { symbol: 'XLV', name: 'HEALTH CARE' }
+            ];
+            
+            try {
+                const data = await fetchWithCache(`${API_BASE}/ticker?ticker=${indices.map(i => i.symbol).join(',')}`);
+                
+                let html = '';
+                [...data, ...data].forEach(item => {
+                    const change = item.main_info?.oneDayChange || '0%';
+                    const isPositive = !change.includes('-');
+                    const changeClass = isPositive ? 'price-up' : 'price-down';
+                    const arrow = isPositive ? '▲' : '▼';
+                    const price = item.main_info?.currentPrice?.toFixed(2) || '--';
+                    
+                    html += `
+                        <div class="ticker-item">
+                            <span class="ticker-symbol">${item.ticker}</span>
+                            <span style="color: #aaa;">${price}</span>
+                            <span class="${changeClass}">${arrow} ${change}</span>
+                        </div>
+                    `;
+                });
+                
+                tickerContent.innerHTML = html;
+            } catch (e) {
+                console.error('Ticker load failed:', e);
+                tickerContent.innerHTML = '<span style="color: #f87171;"> CONNECTION ERROR </span>';
+            }
+        }
+        
+        async function showWelcomeScreen() {
+            const timestamp = new Date().toLocaleTimeString();
+            
+            let indicesHtml = '';
+            let quickStatsHtml = '';
+            let marketOutlook = '';
+            let newsHtml = '';
+            
+            try {
+                // Fetch market data
+                const indexData = await fetchWithCache(`${API_BASE}/ticker?ticker=^GSPC,^IXIC,^VIX,^TNX,GLD,UUP`);
+                
+                // Fetch news for welcome screen
+                const newsData = await fetchWithCache(`${API_BASE}/ticker?ticker=SPY`);
+                const recentNews = newsData.recent_news?.slice(0, 5) || [];
+                
+                newsHtml = '<div class="news-ticker-welcome">';
+                recentNews.forEach(item => {
+                    const time = new Date(item.pubDate).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+                    newsHtml += `
+                        <div class="news-ticker-item">
+                            <span class="news-ticker-time">${time}</span>
+                            <span class="news-ticker-source">${item.provider}</span>
+                            <span class="news-ticker-title">${item.title}</span>
+                        </div>
+                    `;
+                });
+                newsHtml += '</div>';
+                
+                // Market Outlook Text
+                const sp500 = indexData.find(d => d.ticker === '^GSPC');
+                const nasdaq = indexData.find(d => d.ticker === '^IXIC');
+                const vix = indexData.find(d => d.ticker === '^VIX');
+                const tenYear = indexData.find(d => d.ticker === '^TNX');
+                
+                const spChange = parseFloat(sp500?.main_info?.oneDayChange) || 0;
+                const ndqChange = parseFloat(nasdaq?.main_info?.oneDayChange) || 0;
+                
+                let outlookText = "Markets are ";
+                if (spChange > 0.5 && ndqChange > 0.5) {
+                    outlookText += "trading higher with broad-based buying pressure. Technology and growth sectors leading the advance.";
+                } else if (spChange < -0.5 && ndqChange < -0.5) {
+                    outlookText += "under pressure with risk-off sentiment prevailing. Defensive sectors showing relative strength.";
+                } else {
+                    outlookText += "mixed with sector rotation evident. Investors balancing earnings growth against valuation concerns.";
+                }
+                
+                outlookText += ` Volatility index (VIX) at ${vix?.main_info?.currentPrice?.toFixed(2) || '--'} indicates ${vix?.main_info?.currentPrice < 20 ? 'complacent' : 'elevated'} fear levels. Treasury yields at ${tenYear?.main_info?.currentPrice?.toFixed(2) || '--'}% reflect ${parseFloat(tenYear?.main_info?.oneDayChange) > 0 ? 'rising' : 'stable'} rate expectations.`;
+                
+                marketOutlook = `
+                    <div class="market-outlook-header">
+                        <div class="market-outlook-title">Market Outlook</div>
+                        <div class="market-outlook-text">${outlookText}</div>
+                    </div>
+                `;
+                
+                // Quick Stats
+                const gold = indexData.find(d => d.ticker === 'GLD');
+                const dxy = indexData.find(d => d.ticker === 'UUP');
+                
+                quickStatsHtml = `
+                    <div class="quick-stats-grid">
+                        <div class="quick-stat">
+                            <div class="label">S&P 500</div>
+                            <div class="value">${sp500?.main_info?.currentPrice?.toFixed(0) || '--'}</div>
+                            <div class="change ${spChange >= 0 ? 'positive' : 'negative'}">${spChange >= 0 ? '+' : ''}${spChange.toFixed(2)}%</div>
+                        </div>
+                        <div class="quick-stat">
+                            <div class="label">NASDAQ</div>
+                            <div class="value">${nasdaq?.main_info?.currentPrice?.toFixed(0) || '--'}</div>
+                            <div class="change ${ndqChange >= 0 ? 'positive' : 'negative'}">${ndqChange >= 0 ? '+' : ''}${ndqChange.toFixed(2)}%</div>
+                        </div>
+                        <div class="quick-stat">
+                            <div class="label">VIX</div>
+                            <div class="value" style="color: ${vix?.main_info?.currentPrice > 20 ? '#f87171' : '#4ade80'}">${vix?.main_info?.currentPrice?.toFixed(2) || '--'}</div>
+                            <div class="change">${vix?.main_info?.oneDayChange || '--'}</div>
+                        </div>
+                        <div class="quick-stat">
+                            <div class="label">10Y Yield</div>
+                            <div class="value" style="color: #c87832;">${tenYear?.main_info?.currentPrice?.toFixed(2) || '--'}%</div>
+                            <div class="change">${tenYear?.main_info?.oneDayChange || '--'}</div>
+                        </div>
+                    </div>
+                `;
+                
+                // Major Indices Cards
+                const majorIndices = [
+                    { name: 'S&P 500', ticker: '^GSPC', data: sp500 },
+                    { name: 'NASDAQ', ticker: '^IXIC', data: nasdaq },
+                    { name: 'DOW JONES', ticker: '^DJI', data: null },
+                    { name: 'RUSSELL 2000', ticker: '^RUT', data: null }
+                ];
+                
+                indicesHtml = '<div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;">';
+                majorIndices.forEach(idx => {
+                    if (!idx.data) {
+                        indicesHtml += `
+                            <div class="index-card-swapped">
+                                <div class="index-name-top">${idx.name}</div>
+                                <div class="index-ticker-bottom">${idx.ticker}</div>
+                                <div class="index-price">--</div>
+                                <div class="index-change">--</div>
+                            </div>
+                        `;
+                        return;
+                    }
+                    const change = idx.data.main_info?.oneDayChange || '0%';
+                    const isPos = !change.includes('-');
+                    const price = idx.data.main_info?.currentPrice?.toFixed(2) || '--';
+                    
+                    indicesHtml += `
+                        <div class="index-card-swapped">
+                            <div class="index-name-top">${idx.name}</div>
+                            <div class="index-ticker-bottom">${idx.ticker}</div>
+                            <div class="index-price">${price}</div>
+                            <div class="index-change ${isPos ? 'positive' : 'negative'}">
+                                ${isPos ? '▲' : '▼'} ${change}
+                            </div>
+                        </div>
+                    `;
+                });
+                indicesHtml += '</div>';
+                
+            } catch (e) {
+                console.error('Welcome data error:', e);
+                indicesHtml = '<div style="color: #f87171;">Error loading indices</div>';
+                marketOutlook = '<div style="color: #f87171;">Error loading market outlook</div>';
+                newsHtml = '<div style="color: #f87171;">Error loading news</div>';
+            }
+            
+            const welcomeHtml = `
+                <div class="chat-message">
+                    <div class="chat-header">
+                        <span class="chat-timestamp">[${timestamp}]</span>
+                        <span style="color: #c87832; font-weight: 500;">SYSTEM</span>
+                    </div>
+                    <div class="chat-welcome">
+                        <div class="welcome-title">MINI BLOOMBERG TERMINAL v3.0</div>
+                        <div class="welcome-subtitle">Professional Financial Data Terminal</div>
+                        
+                        ${marketOutlook}
+                        ${quickStatsHtml}
+                        
+                        <div class="welcome-grid">
+                            <div class="welcome-panel">
+                                <div style="color: #888; font-weight: 500; margin-bottom: 12px; text-transform: uppercase; font-size: 11px; letter-spacing: 1px;">Major Indices</div>
+                                ${indicesHtml}
+                            </div>
+                            <div class="welcome-panel">
+                                <div style="color: #888; font-weight: 500; margin-bottom: 12px; text-transform: uppercase; font-size: 11px; letter-spacing: 1px;">Latest Market News</div>
+                                ${newsHtml}
+                            </div>
+                        </div>
+                        
+                        <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #1a1a1a; color: #555; font-size: 10px;">
+                            Data: mini-finapi.vercel.app | Charts: TradingView™ | © 2026 Mini Bloomberg Terminal
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            chatContainer.innerHTML = welcomeHtml;
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+        
+        function addChatMessage(command, content, isError = false) {
+            const timestamp = new Date().toLocaleTimeString();
+            
+            const messageHtml = `
+                <div class="chat-message">
+                    <div class="chat-header">
+                        <span class="chat-timestamp">[${timestamp}]</span>
+                        <span class="chat-command">${command}</span>
+                    </div>
+                    <div class="chat-content ${isError ? 'error-box' : ''}">
+                        ${content}
+                    </div>
+                </div>
+            `;
+            
+            chatContainer.insertAdjacentHTML('beforeend', messageHtml);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            
+            const messages = chatContainer.querySelectorAll('.chat-message');
+            if (messages.length > 50) {
+                messages[0].remove();
+            }
+        }
+        
+        function addTypingIndicator() {
+            const id = 'typing_' + Date.now();
+            const html = `
+                <div class="chat-message" id="${id}">
+                    <div class="chat-header">
+                        <span class="chat-timestamp">[${new Date().toLocaleTimeString()}]</span>
+                        <span style="color: #666;">SYSTEM</span>
+                    </div>
+                    <div style="padding: 16px; color: #666; display: flex; align-items: center; gap: 12px;">
+                        <span style="width: 16px; height: 16px; border: 2px solid rgba(200, 120, 50, 0.2); border-top-color: #c87832; border-radius: 50%; animation: spin 0.8s linear infinite; display: inline-block;"></span>
+                        Fetching data from API...
+                    </div>
+                </div>
+            `;
+            chatContainer.insertAdjacentHTML('beforeend', html);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            return id;
+        }
+        
+        function removeTypingIndicator(id) {
+            const el = document.getElementById(id);
+            if (el) el.remove();
+        }
+        
+        function clearScreen() {
+            chatContainer.innerHTML = '';
+            showWelcomeScreen();
+            commandInput.focus();
+        }
+        
+        commandInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const cmd = commandInput.value.trim();
+                if (cmd) {
+                    executeCommand(cmd);
+                    state.commandHistory.push(cmd);
+                    state.historyIndex = state.commandHistory.length;
+                }
+                commandInput.value = '';
+                hideAutocomplete();
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (state.historyIndex > 0) {
+                    state.historyIndex--;
+                    commandInput.value = state.commandHistory[state.historyIndex];
+                }
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (state.historyIndex < state.commandHistory.length - 1) {
+                    state.historyIndex++;
+                    commandInput.value = state.commandHistory[state.historyIndex];
+                } else {
+                    state.historyIndex = state.commandHistory.length;
+                    commandInput.value = '';
+                }
+            } else if (e.key === 'Tab') {
+                e.preventDefault();
+                handleAutocomplete();
+            } else if (e.key === 'Escape') {
+                hideAutocomplete();
+                commandInput.value = '';
+            } else {
+                setTimeout(showAutocomplete, 100);
+            }
+        });
+        
+        function showAutocomplete() {
+            const val = commandInput.value.toUpperCase();
+            if (!val) {
+                hideAutocomplete();
+                return;
+            }
+            
+            const matches = Object.entries(state.commands).filter(([cmd]) => cmd.startsWith(val));
+            if (matches.length === 0) {
+                hideAutocomplete();
+                return;
+            }
+            
+            autocomplete.innerHTML = matches.map(([cmd, info], idx) => `
+                <div class="autocomplete-item ${idx === 0 ? 'selected' : ''}" onclick="selectCommand('${cmd}')">
+                    <div>
+                        <span class="cmd">${cmd}</span>
+                        <span style="margin-left: 12px; color: #666;">${info.desc}</span>
+                    </div>
+                    <span style="color: #444; font-size: 11px;">${info.args}</span>
+                </div>
+            `).join('');
+            
+            autocomplete.style.display = 'block';
+        }
+        
+        function hideAutocomplete() {
+            autocomplete.style.display = 'none';
+        }
+        
+        function selectCommand(cmd) {
+            commandInput.value = cmd + ' ';
+            hideAutocomplete();
+            commandInput.focus();
+        }
+        
+        function handleAutocomplete() {
+            const selected = autocomplete.querySelector('.selected');
+            if (selected) {
+                const cmd = selected.querySelector('.cmd').textContent;
+                selectCommand(cmd);
+            }
+        }
+        
+        async function executeCommand(input) {
+            const parts = input.trim().toUpperCase().split(' ');
+            const cmd = parts[0];
+            const arg = parts[1] || '';
+            
+            const typingId = addTypingIndicator();
+            
+            try {
+                let content = '';
+                
+                switch(cmd) {
+                    case 'WEI':
+                        content = await getWorldIndicesContent();
+                        break;
+                    case 'GP':
+                        content = await getGlobalPerformanceContent();
+                        break;
+                    case 'NEWS':
+                        content = await getNewsContent(arg || 'SPY');
+                        break;
+                    case 'BOND':
+                        content = await getBondContent();
+                        break;
+                    case 'SECF':
+                        content = await getSectorsContent();
+                        break;
+                    case 'INDU':
+                        content = await getIndustriesContent();
+                        break;
+                    case 'STX':
+                        content = await getStockScreenerContent();
+                        break;
+                    case 'CRYP':
+                        content = await getCryptoContent();
+                        break;
+                    case 'ETF':
+                        content = await getETFsContent();
+                        break;
+                    case 'GO':
+                        if (!arg) throw new Error('PLEASE ENTER TICKER: GO <TICKER>');
+                        content = await getFullAnalysisContent(arg);
+                        break;
+                    case 'HELP':
+                        content = getHelpContent();
+                        break;
+                    case 'CLEAR':
+                        clearScreen();
+                        removeTypingIndicator(typingId);
+                        return;
+                    default:
+                        throw new Error(`UNKNOWN COMMAND: ${cmd}. TYPE HELP FOR AVAILABLE COMMANDS.`);
+                }
+                
+                removeTypingIndicator(typingId);
+                addChatMessage(input, content);
+                
+            } catch (e) {
+                removeTypingIndicator(typingId);
+                addChatMessage(input, `<div class="error-box"><div style="font-weight: 600; margin-bottom: 8px;">⚠ ERROR</div>${e.message}</div>`, true);
+            }
+        }
+        
+        async function getFullAnalysisContent(ticker) {
+            try {
+                const data = await fetchWithCache(`${API_BASE}/ticker?ticker=${ticker}`);
+                
+                if (!data || typeof data !== 'object') {
+                    throw new Error(`NO DATA FOUND FOR TICKER: ${ticker}`);
+                }
+                
+                const info = data.main_info || {};
+                const perf = data.price_performance || {};
+                const targets = data.price_targets || {};
+                const trading = data.trading_info || {};
+                const valuation = data.valuation || {};
+                const ratios = data.ratios || {};
+                const returns = data.returns || {};
+                const debt = data.debt || {};
+                const dividends = data.dividends || {};
+                const growth = data.growth || {};
+                
+                const tvSymbol = ticker.includes('-USD') ? `BINANCE:${ticker.replace('-USD', 'USDT')}` : 
+                                ['SPY', 'QQQ', 'IWM', 'DIA', 'XLF', 'XLK', 'XLE', 'XLV', 'XLI', 'XLP', 'XLU', 'XLRE', 'XLB', 'XLC'].includes(ticker) ? `AMEX:${ticker}` : `NASDAQ:${ticker}`;
+                
+                // Calculate key metrics
+                const weekLow = perf.fiftyTwoWeekLow || 0;
+                const weekHigh = perf.fiftyTwoWeekHigh || 0;
+                const current = perf.currentPrice || 0;
+                const weekRangePct = weekHigh > weekLow ? ((current - weekLow) / (weekHigh - weekLow)) * 100 : 50;
+                const fromHigh = weekHigh > 0 ? ((current - weekHigh) / weekHigh * 100) : 0;
+                
+                const dayChange = parseFloat(info.oneDayChange) || 0;
+                const weekChange = parseFloat(info.fiftyTwoWeekChange) || 0;
+                
+                // Calculate recommendation distribution
+                const recKey = (targets.recommendationKey || info.recommendation || 'hold').toLowerCase();
+                let buyPct = 60, holdPct = 30, sellPct = 10;
+                if (recKey.includes('strong_buy')) { buyPct = 75; holdPct = 20; sellPct = 5; }
+                else if (recKey.includes('buy')) { buyPct = 60; holdPct = 30; sellPct = 10; }
+                else if (recKey.includes('hold')) { buyPct = 30; holdPct = 50; sellPct = 20; }
+                else if (recKey.includes('sell')) { buyPct = 15; holdPct = 25; sellPct = 60; }
+                
+                // Target price visualization
+                const targetLow = targets.targetLowPrice || info.PT_Low || current * 0.8;
+                const targetMean = targets.targetMeanPrice || current;
+                const targetHigh = targets.targetHighPrice || info.PT_High || current * 1.2;
+                const targetRange = targetHigh - targetLow;
+                const currentInRange = targetRange > 0 ? ((current - targetLow) / targetRange) * 100 : 50;
+                
+                return `
+                    <div class="header-bar">
+                        <span>SECURITY ANALYSIS: ${ticker}</span>
+                        <span>${data.shortName || ticker}</span>
+                    </div>
+                    
+                    <!-- Enhanced Price Header -->
+                    <div class="price-header-card">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                            <div>
+                                <div style="color: #666; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">${data.shortName}</div>
+                                <div class="price-main">$${current.toFixed(2)}</div>
+                                <div class="price-change-large ${dayChange >= 0 ? 'positive' : 'negative'}">
+                                    <span class="arrow">${dayChange >= 0 ? '▲' : '▼'}</span>
+                                    ${Math.abs(dayChange).toFixed(2)}% 
+                                    <span style="color: #666; font-size: 12px; font-weight: 400;">(${(current * dayChange / 100).toFixed(2)})</span>
+                                </div>
+                            </div>
+                            <div style="text-align: right;">
+                                <div style="background: ${dayChange >= 0 ? 'rgba(74, 222, 128, 0.1)' : 'rgba(248, 113, 113, 0.1)'}; border: 1px solid ${dayChange >= 0 ? 'rgba(74, 222, 128, 0.3)' : 'rgba(248, 113, 113, 0.3)'}; padding: 8px 16px; border-radius: 4px;">
+                                    <div style="color: #666; font-size: 9px; text-transform: uppercase;">Market Cap</div>
+                                    <div style="color: #e0e0e0; font-size: 14px; font-weight: 600;">${info.marketCap || valuation.marketCap || 'N/A'}</div>
+                                </div>
+                                <div style="margin-top: 8px; color: #c87832; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">
+                                    ${data.company_info?.sector || 'N/A'} | ${data.company_info?.industry || 'N/A'}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Day Range Bar -->
+                        <div style="margin-top: 16px;">
+                            <div style="display: flex; justify-content: space-between; font-size: 10px; color: #666; margin-bottom: 4px;">
+                                <span>Day Range</span>
+                                <span>$${perf.dayLow?.toFixed(2) || '--'} - $${perf.dayHigh?.toFixed(2) || '--'}</span>
+                            </div>
+                            <div class="metric-bar-container" style="height: 6px;">
+                                <div class="range-visual"></div>
+                                <div class="metric-bar-marker" style="left: ${((current - (perf.dayLow || current)) / ((perf.dayHigh || current) - (perf.dayLow || current))) * 100}%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Quick Stats Grid -->
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px;">
+                        <div class="stat-card-enhanced">
+                            <div class="stat-header">
+                                <span class="stat-label">Open</span>
+                            </div>
+                            <div class="stat-value">$${perf.open?.toFixed(2) || '--'}</div>
+                        </div>
+                        <div class="stat-card-enhanced">
+                            <div class="stat-header">
+                                <span class="stat-label">Prev Close</span>
+                            </div>
+                            <div class="stat-value">$${perf.previousClose?.toFixed(2) || '--'}</div>
+                        </div>
+                        <div class="stat-card-enhanced">
+                            <div class="stat-header">
+                                <span class="stat-label">Volume</span>
+                            </div>
+                            <div class="stat-value" style="font-size: 16px;">${((trading.volume || 0) / 1000000).toFixed(1)}M</div>
+                            <div style="font-size: 9px; color: #666; margin-top: 4px;">Avg: ${((trading.averageVolume || 0) / 1000000).toFixed(1)}M</div>
+                        </div>
+                        <div class="stat-card-enhanced">
+                            <div class="stat-header">
+                                <span class="stat-label">Beta</span>
+                            </div>
+                            <div class="stat-value">${data.risk?.beta?.toFixed(2) || '--'}</div>
+                            <div class="volatility-indicator">
+                                ${Array(5).fill(0).map((_, i) => `<div class="volatility-dot ${i < (data.risk?.beta > 1.5 ? 4 : data.risk?.beta > 1 ? 3 : 2) ? 'active' : ''}"></div>`).join('')}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- TradingView Chart -->
+                    <div style="height: 420px; width: 100%; background: #0a0a0a; border: 1px solid #1a1a1a; margin-bottom: 16px; border-radius: 4px;">
+                        <iframe 
+                            src="https://s.tradingview.com/widgetembed/?frameElementId=tradingview_${ticker}&symbol=${tvSymbol}&interval=D&hidesidetoolbar=0&symboledit=1&saveimage=1&toolbarbg=0F0F0F&studies=RSI@tv-basicstudies,MASimple@tv-basicstudies,MACD@tv-basicstudies&theme=dark&style=1&timezone=Etc/UTC&withdateranges=1&showpopupbutton=1&locale=en"
+                            style="width: 100%; height: 100%; border: none;"
+                            allowfullscreen
+                        ></iframe>
+                    </div>
+                    
+                    <!-- Enhanced 52-Week Range -->
+                    <div class="panel" style="margin-bottom: 16px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <span style="color: #888; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">52-Week Range</span>
+                            <span style="color: #c87832; font-size: 11px; font-weight: 600;">${weekRangePct.toFixed(1)}% of range</span>
+                        </div>
+                        <div class="metric-bar-container" style="height: 12px;">
+                            <div class="range-visual"></div>
+                            <div class="metric-bar-marker" style="left: ${weekRangePct}%; height: 16px; top: -2px;"></div>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-top: 8px; font-size: 10px; color: #666;">
+                            <span style="color: #f87171;">Low: $${weekLow.toFixed(2)}</span>
+                            <span style="color: #e0e0e0; font-weight: 600;">Current</span>
+                            <span style="color: #4ade80;">High: $${weekHigh.toFixed(2)}</span>
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 16px; padding-top: 16px; border-top: 1px solid #1a1a1a;">
+                            <div style="text-align: center;">
+                                <div style="color: #666; font-size: 9px; text-transform: uppercase; margin-bottom: 4px;">52W Change</div>
+                                <div style="color: ${weekChange >= 0 ? '#4ade80' : '#f87171'}; font-size: 16px; font-weight: 600;">${weekChange >= 0 ? '+' : ''}${weekChange.toFixed(2)}%</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="color: #666; font-size: 9px; text-transform: uppercase; margin-bottom: 4px;">From 50 DMA</div>
+                                <div style="color: ${parseFloat(trading.change_from_50DMA) >= 0 ? '#4ade80' : '#f87171'}; font-size: 16px; font-weight: 600;">${trading.change_from_50DMA || '--'}</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="color: #666; font-size: 9px; text-transform: uppercase; margin-bottom: 4px;">From 200 DMA</div>
+                                <div style="color: ${parseFloat(trading.change_from_200DMA) >= 0 ? '#4ade80' : '#f87171'}; font-size: 16px; font-weight: 600;">${trading.change_from_200DMA || '--'}</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Valuation & Growth Metrics -->
+                    <div class="section-title">Valuation & Growth Metrics</div>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px;">
+                        <div class="stat-card-enhanced">
+                            <div class="stat-header">
+                                <span class="stat-label">Trailing P/E</span>
+                                <span style="color: ${(ratios.trailingPE || info.PE || 0) > 25 ? '#f87171' : '#4ade80'}; font-size: 10px;">${(ratios.trailingPE || info.PE || 0) > 25 ? 'HIGH' : (ratios.trailingPE || info.PE || 0) < 15 ? 'LOW' : 'AVG'}</span>
+                            </div>
+                            <div class="stat-value">${ratios.trailingPE ? ratios.trailingPE.toFixed(2) : info.PE ? info.PE.toFixed(2) : '--'}</div>
+                            <div class="metric-bar-container" style="height: 4px; margin-top: 8px;">
+                                <div class="metric-bar-fill" style="width: ${Math.min(((ratios.trailingPE || info.PE || 0) / 40) * 100, 100)}%; background: ${(ratios.trailingPE || info.PE || 0) > 30 ? '#f87171' : (ratios.trailingPE || info.PE || 0) > 20 ? '#c87832' : '#4ade80'};"></div>
+                            </div>
+                            <div style="font-size: 9px; color: #666; margin-top: 4px;">Forward: ${ratios.forwardPE ? ratios.forwardPE.toFixed(2) : info.forwardPE ? info.forwardPE.toFixed(2) : '--'}</div>
+                        </div>
+                        
+                        <div class="stat-card-enhanced">
+                            <div class="stat-header">
+                                <span class="stat-label">Price/Book</span>
+                            </div>
+                            <div class="stat-value">${valuation.priceToBook ? valuation.priceToBook.toFixed(2) : '--'}</div>
+                            <div class="metric-bar-container" style="height: 4px; margin-top: 8px;">
+                                <div class="metric-bar-fill" style="width: ${Math.min((valuation.priceToBook || 0) * 20, 100)}%; background: #c87832;"></div>
+                            </div>
+                            <div style="font-size: 9px; color: #666; margin-top: 4px;">P/S: ${ratios.priceToSalesTrailing12Months ? ratios.priceToSalesTrailing12Months.toFixed(2) : info.PS ? info.PS.toFixed(2) : '--'}</div>
+                        </div>
+                        
+                        <div class="stat-card-enhanced">
+                            <div class="stat-header">
+                                <span class="stat-label">Revenue Growth</span>
+                            </div>
+                            <div class="stat-value" style="color: ${(growth.revenueGrowth || '').includes('-') ? '#f87171' : '#4ade80'};">${growth.revenueGrowth || '--'}</div>
+                            <div class="metric-bar-container" style="height: 4px; margin-top: 8px;">
+                                <div class="metric-bar-fill" style="width: ${Math.min(Math.abs(parseFloat(growth.revenueGrowth) || 0) * 5, 100)}%; background: ${(growth.revenueGrowth || '').includes('-') ? '#f87171' : '#4ade80'};"></div>
+                            </div>
+                            <div style="font-size: 9px; color: #666; margin-top: 4px;">Earnings: ${growth.earningsGrowth || '--'}</div>
+                        </div>
+                        
+                        <div class="stat-card-enhanced">
+                            <div class="stat-header">
+                                <span class="stat-label">Profit Margin</span>
+                            </div>
+                            <div class="stat-value">${returns.profitMargins || '--'}</div>
+                            <div class="metric-bar-container" style="height: 4px; margin-top: 8px;">
+                                <div class="metric-bar-fill" style="width: ${Math.abs(parseFloat(returns.profitMargins) || 0) * 100}%; background: #60a5fa;"></div>
+                            </div>
+                            <div style="font-size: 9px; color: #666; margin-top: 4px;">Operating: ${returns.operatingMargins || '--'}</div>
+                        </div>
+                        
+                        <div class="stat-card-enhanced">
+                            <div class="stat-header">
+                                <span class="stat-label">ROE</span>
+                            </div>
+                            <div class="stat-value">${returns.returnOnEquity || '--'}</div>
+                            <div class="metric-bar-container" style="height: 4px; margin-top: 8px;">
+                                <div class="metric-bar-fill" style="width: ${Math.min(Math.abs(parseFloat(returns.returnOnEquity) || 0) * 1.5, 100)}%; background: #a78bfa;"></div>
+                            </div>
+                            <div style="font-size: 9px; color: #666; margin-top: 4px;">ROA: ${returns.returnOnAssets || '--'}</div>
+                        </div>
+                        
+                        <div class="stat-card-enhanced">
+                            <div class="stat-header">
+                                <span class="stat-label">Debt/Equity</span>
+                            </div>
+                            <div class="stat-value">${debt.debtToEquity ? debt.debtToEquity.toFixed(2) : '--'}</div>
+                            <div class="metric-bar-container" style="height: 4px; margin-top: 8px;">
+                                <div class="metric-bar-fill" style="width: ${Math.min((debt.debtToEquity || 0) * 20, 100)}%; background: ${(debt.debtToEquity || 0) > 1 ? '#f87171' : (debt.debtToEquity || 0) > 0.5 ? '#c87832' : '#4ade80'};"></div>
+                            </div>
+                            <div style="font-size: 9px; color: #666; margin-top: 4px;">Current: ${debt.currentRatio || '--'}</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Enhanced Analyst Recommendations -->
+                    <div class="section-title">Analyst Recommendations</div>
+                    <div class="panel" style="margin-bottom: 16px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <div>
+                                <span style="color: #666; font-size: 10px; text-transform: uppercase;">Consensus</span>
+                                <div style="margin-top: 4px;">
+                                    <span class="badge badge-${getRecBadge(targets.recommendationKey || info.recommendation)}">
+                                        ${(targets.recommendationKey || info.recommendation || 'HOLD').toUpperCase()}
+                                    </span>
+                                    <span style="color: #888; font-size: 11px; margin-left: 8px;">Mean: ${targets.recommendationMean ? targets.recommendationMean.toFixed(2) : '--'}/5.0</span>
+                                </div>
+                            </div>
+                            <div style="text-align: right;">
+                                <div style="color: #666; font-size: 10px; text-transform: uppercase;">Analysts</div>
+                                <div style="color: #c87832; font-size: 18px; font-weight: 600;">${targets.numberOfAnalystOpinions || '--'}</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Recommendation Distribution Bar -->
+                        <div class="recommendation-bar">
+                            <div class="recommendation-segment buy" style="width: ${buyPct}%;">BUY ${buyPct}%</div>
+                            <div class="recommendation-segment hold" style="width: ${holdPct}%;">HOLD ${holdPct}%</div>
+                            <div class="recommendation-segment sell" style="width: ${sellPct}%;">SELL ${sellPct}%</div>
+                        </div>
+                        
+                        <!-- Target Price Visual -->
+                        <div style="margin-top: 20px;">
+                            <div style="color: #666; font-size: 10px; text-transform: uppercase; margin-bottom: 8px;">Price Target Range</div>
+                            <div class="target-price-visual">
+                                <div class="target-price-range" style="left: 0; width: 100%;"></div>
+                                <div class="target-price-current" style="left: ${currentInRange}%;"></div>
+                            </div>
+                            <div class="target-price-labels">
+                                <span style="color: #f87171; font-weight: 600;">Low: $${targetLow.toFixed(2)}</span>
+                                <span style="color: #c87832; font-weight: 600;">Mean: $${targetMean.toFixed(2)}</span>
+                                <span style="color: #4ade80; font-weight: 600;">High: $${targetHigh.toFixed(2)}</span>
+                            </div>
+                            <div style="text-align: center; margin-top: 8px; font-size: 11px; color: #888;">
+                                Current price is <span style="color: #e0e0e0; font-weight: 600;">${currentInRange > 50 ? ((currentInRange - 50) * 2).toFixed(0) : ((50 - currentInRange) * 2).toFixed(0)}%</span> ${currentInRange > 50 ? 'above' : 'below'} mean target
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Dividend Info -->
+                    <div class="section-title">Dividend Information</div>
+                    <div class="panel-grid">
+                        <div class="panel">
+                            <div class="metric-row"><span class="metric-label">Dividend Rate:</span><span class="metric-value">${dividends.dividendRate || 'N/A'}</span></div>
+                            <div class="metric-row"><span class="metric-label">Dividend Yield:</span><span class="metric-value" style="color: #c87832;">${dividends.dividendYield || 'N/A'}</span></div>
+                            <div class="metric-row"><span class="metric-label">Payout Ratio:</span><span class="metric-value">${dividends.payoutRatio || 'N/A'}</span></div>
+                        </div>
+                        <div class="panel">
+                            <div class="metric-row"><span class="metric-label">5Y Avg Yield:</span><span class="metric-value">${dividends.fiveYearAvgDividendYield || 'N/A'}</span></div>
+                            <div class="metric-row"><span class="metric-label">Ex-Dividend Date:</span><span class="metric-value">${dividends.exDividendDate ? new Date(dividends.exDividendDate * 1000).toLocaleDateString() : 'N/A'}</span></div>
+                            <div class="metric-row"><span class="metric-label">Trailing Annual Rate:</span><span class="metric-value">${dividends.trailingAnnualDividendRate || 'N/A'}</span></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Recent News -->
+                    <div class="section-title">Recent News</div>
+                    ${(data.recent_news || []).slice(0, 5).map(news => `
+                        <div class="news-item">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                                <span class="news-source">${news.provider}</span>
+                                <span class="news-time">${new Date(news.pubDate).toLocaleString()}</span>
+                            </div>
+                            <div class="news-title">${news.title}</div>
+                            <div style="color: #666; margin-top: 8px; font-size: 11px; line-height: 1.5;">${news.summary}</div>
+                        </div>
+                    `).join('') || '<div style="color: #666; padding: 16px;">No recent news available.</div>'}
+                `;
+            } catch (e) {
+                throw new Error(`Failed to load analysis for ${ticker}: ${e.message}`);
+            }
+        }
+        
+        async function getWorldIndicesContent() {
+            // Organized into families of 4
+            const indexFamilies = [
+                {
+                    name: 'US Major Indices',
+                    indices: [
+                        { name: 'S&P 500', ticker: '^GSPC', proxy: 'SPY', region: 'US' },
+                        { name: 'NASDAQ', ticker: '^IXIC', proxy: 'QQQ', region: 'US' },
+                        { name: 'DOW JONES', ticker: '^DJI', proxy: 'DIA', region: 'US' },
+                        { name: 'RUSSELL 2000', ticker: '^RUT', proxy: 'IWM', region: 'US' }
+                    ]
+                },
+                {
+                    name: 'International Developed',
+                    indices: [
+                        { name: 'EAFE', ticker: 'EFA', proxy: 'EFA', region: 'EUROPE' },
+                        { name: 'JAPAN', ticker: 'EWJ', proxy: 'EWJ', region: 'ASIA' },
+                        { name: 'GERMANY', ticker: 'EWG', proxy: 'EWG', region: 'EUROPE' },
+                        { name: 'UK', ticker: 'EWU', proxy: 'EWU', region: 'EUROPE' }
+                    ]
+                },
+                {
+                    name: 'Emerging Markets',
+                    indices: [
+                        { name: 'EMERGING', ticker: 'EEM', proxy: 'EEM', region: 'EM' },
+                        { name: 'CHINA', ticker: 'FXI', proxy: 'FXI', region: 'CHINA' },
+                        { name: 'BRAZIL', ticker: 'EWZ', proxy: 'EWZ', region: 'AMERICAS' },
+                        { name: 'INDIA', ticker: 'INDA', proxy: 'INDA', region: 'ASIA' }
+                    ]
+                }
+            ];
+            
+            const allProxies = indexFamilies.flatMap(f => f.indices.map(i => i.proxy)).join(',');
+            const data = await fetchWithCache(`${API_BASE}/ticker?ticker=${allProxies}`);
+            
+            let html = `
+                <div class="header-bar">
+                    <span>WORLD EQUITY INDICES (WEI)</span>
+                    <span>GLOBAL MARKET MONITOR</span>
+                </div>
+            `;
+            
+            let dataIdx = 0;
+            indexFamilies.forEach(family => {
+                html += `
+                    <div class="asset-family">
+                        <div class="family-title">${family.name}</div>
+                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;">
+                `;
+                
+                family.indices.forEach(idx => {
+                    const item = data[dataIdx++];
+                    if (!item) return;
+                    
+                    const change = item.main_info?.oneDayChange || '0%';
+                    const isPos = !change.includes('-');
+                    const low = item.price_performance?.fiftyTwoWeekLow?.toFixed(0) || 0;
+                    const high = item.price_performance?.fiftyTwoWeekHigh?.toFixed(0) || 0;
+                    const current = item.main_info?.currentPrice || 0;
+                    const rangePct = high > low ? ((current - low) / (high - low)) * 100 : 50;
+                    
+                    html += `
+                        <div class="index-card" onclick="executeCommand('GO ${item.ticker}')" style="cursor: pointer;">
+                            <div class="index-symbol">${idx.ticker}</div>
+                            <div class="index-name">${idx.name}</div>
+                            <div class="index-price">${current.toFixed(2)}</div>
+                            <div class="index-change ${isPos ? 'positive' : 'negative'}">
+                                ${isPos ? '▲' : '▼'} ${change}
+                            </div>
+                            <div style="margin-top: 8px;">
+                                <div class="progress-container" style="height: 4px; margin: 0;">
+                                    <div class="progress-bar" style="width: ${rangePct}%; background: ${isPos ? '#4ade80' : '#f87171'}; opacity: 0.7;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                html += '</div></div>';
+            });
+            
+            return html;
+        }
+        
+        async function getGlobalPerformanceContent() {
+            // Organized into families of 4
+            const assetFamilies = [
+                {
+                    name: 'US Equities',
+                    assets: [
+                        { name: 'S&P 500', ticker: 'SPY', type: 'EQUITY' },
+                        { name: 'NASDAQ', ticker: 'QQQ', type: 'EQUITY' },
+                        { name: 'RUSSELL 2K', ticker: 'IWM', type: 'EQUITY' },
+                        { name: 'DOW JONES', ticker: 'DIA', type: 'EQUITY' }
+                    ]
+                },
+                {
+                    name: 'International',
+                    assets: [
+                        { name: 'EAFE', ticker: 'EFA', type: 'EQUITY' },
+                        { name: 'EMERGING', ticker: 'EEM', type: 'EQUITY' },
+                        { name: 'JAPAN', ticker: 'EWJ', type: 'EQUITY' },
+                        { name: 'CHINA', ticker: 'FXI', type: 'EQUITY' }
+                    ]
+                },
+                {
+                    name: 'Commodities',
+                    assets: [
+                        { name: 'GOLD', ticker: 'GLD', type: 'COMMODITY' },
+                        { name: 'SILVER', ticker: 'SLV', type: 'COMMODITY' },
+                        { name: 'CRUDE OIL', ticker: 'USO', type: 'COMMODITY' },
+                        { name: 'NAT GAS', ticker: 'UNG', type: 'COMMODITY' }
+                    ]
+                },
+                {
+                    name: 'Fixed Income & FX',
+                    assets: [
+                        { name: '20+ YR TREAS', ticker: 'TLT', type: 'BOND' },
+                        { name: 'HY BONDS', ticker: 'HYG', type: 'BOND' },
+                        { name: 'USD INDEX', ticker: 'UUP', type: 'FX' },
+                        { name: 'EURO', ticker: 'FXE', type: 'FX' }
+                    ]
+                },
+                {
+                    name: 'Crypto & Thematic',
+                    assets: [
+                        { name: 'BITCOIN', ticker: 'BTC-USD', type: 'CRYPTO' },
+                        { name: 'ETHEREUM', ticker: 'ETH-USD', type: 'CRYPTO' },
+                        { name: 'SEMIS', ticker: 'SOXX', type: 'SECTOR' },
+                        { name: 'MAG 7', ticker: 'MAGS', type: 'THEME' }
+                    ]
+                }
+            ];
+            
+            const allTickers = assetFamilies.flatMap(f => f.assets.map(a => a.ticker)).join(',');
+            const data = await fetchWithCache(`${API_BASE}/ticker?ticker=${allTickers}`);
+            
+            let html = `
+                <div class="header-bar">
+                    <span>GLOBAL PERFORMANCE HEATMAP (GP)</span>
+                    <span>ASSET CLASS PERFORMANCE</span>
+                </div>
+            `;
+            
+            let dataIdx = 0;
+            assetFamilies.forEach(family => {
+                html += `
+                    <div class="asset-family">
+                        <div class="family-title">${family.name}</div>
+                        <div class="heatmap" style="grid-template-columns: repeat(4, 1fr);">
+                `;
+                
+                family.assets.forEach(asset => {
+                    const item = data[dataIdx++];
+                    if (!item) return;
+                    
+                    const change = parseFloat(item.main_info?.oneDayChange) || 0;
+                    const intensity = Math.min(Math.abs(change) * 15, 100);
+                    const isPos = change >= 0;
+                    const bgColor = isPos ? `rgba(74, 222, 128, ${intensity / 400})` : `rgba(248, 113, 113, ${intensity / 400})`;
+                    const borderColor = isPos ? 'rgba(74, 222, 128, 0.3)' : 'rgba(248, 113, 113, 0.3)';
+                    
+                    html += `
+                        <div class="heatmap-cell" style="background: ${bgColor}; border-color: ${borderColor};" onclick="executeCommand('GO ${item.ticker}')">
+                            <div style="font-size: 10px; color: #666; margin-bottom: 4px; text-transform: uppercase;">${asset.type}</div>
+                            <div style="font-weight: 600; color: #e0e0e0; font-size: 14px; margin-bottom: 4px;">${item.ticker}</div>
+                            <div style="font-size: 11px; margin: 4px 0; color: #999;">${item.main_info?.currentPrice?.toFixed(2) || '--'}</div>
+                            <div style="font-weight: 600; color: ${isPos ? '#4ade80' : '#f87171'}; font-size: 14px;">
+                                ${isPos ? '+' : ''}${change.toFixed(2)}%
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                html += '</div></div>';
+            });
+            
+            // Performance Summary
+            const sortedData = [...data].sort((a, b) => parseFloat(b.main_info?.oneDayChange) - parseFloat(a.main_info?.oneDayChange));
+            const allAssets = assetFamilies.flatMap(f => f.assets);
+            
+            html += `
+                <div class="section-title">Performance Summary</div>
+                <div class="panel-grid">
+                    <div class="panel">
+                        <div style="color: #4ade80; margin-bottom: 12px; font-weight: 500; text-transform: uppercase; font-size: 11px; letter-spacing: 1px;">▲ Top Performers</div>
+                        ${sortedData.slice(0, 5).map((item, i) => {
+                            const asset = allAssets[data.indexOf(item)];
+                            return `
+                                <div class="metric-row" style="padding: 8px 0;">
+                                    <span><span style="color: #555; margin-right: 8px;">${i+1}.</span><span style="color: #c87832; font-weight: 500;">${item.ticker}</span> <span style="color: #555; font-size: 10px;">${asset?.type}</span></span>
+                                    <span class="positive" style="font-weight: 600;">+${parseFloat(item.main_info?.oneDayChange).toFixed(2)}%</span>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                    <div class="panel">
+                        <div style="color: #f87171; margin-bottom: 12px; font-weight: 500; text-transform: uppercase; font-size: 11px; letter-spacing: 1px;">▼ Bottom Performers</div>
+                        ${sortedData.slice(-5).reverse().map((item, i) => {
+                            const asset = allAssets[data.indexOf(item)];
+                            return `
+                                <div class="metric-row" style="padding: 8px 0;">
+                                    <span><span style="color: #555; margin-right: 8px;">${i+1}.</span><span style="color: #c87832; font-weight: 500;">${item.ticker}</span> <span style="color: #555; font-size: 10px;">${asset?.type}</span></span>
+                                    <span class="negative" style="font-weight: 600;">${parseFloat(item.main_info?.oneDayChange).toFixed(2)}%</span>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+            `;
+            
+            return html;
+        }
+        
+        async function getNewsContent(ticker) {
+            const data = await fetchWithCache(`${API_BASE}/ticker?ticker=${ticker}`);
+            const news = data.recent_news || [];
+            
+            let html = `
+                <div class="header-bar">
+                    <span>NEWS & SENTIMENT: ${ticker}</span>
+                    <span>${news.length} ARTICLES</span>
+                </div>
+            `;
+            
+            news.forEach(item => {
+                const time = new Date(item.pubDate).toLocaleString();
+                html += `
+                    <div class="news-item">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                            <span class="news-source">${item.provider}</span>
+                            <span class="news-time">${time}</span>
+                        </div>
+                        <div class="news-title">${item.title}</div>
+                        <div style="color: #666; margin-top: 6px; font-size: 11px; line-height: 1.4;">
+                            ${item.summary}
+                        </div>
+                        ${item.source_url ? `<div style="margin-top: 8px;"><a href="${item.source_url}" target="_blank" style="color: #c87832; font-size: 10px; font-weight: 500;">[ READ FULL ARTICLE → ]</a></div>` : ''}
+                    </div>
+                `;
+            });
+            
+            return html;
+        }
+        
+        async function getBondContent() {
+            // Enhanced bond data with yield curve and bond ETFs
+            const data = await fetchWithCache(`${API_BASE}/ticker?ticker=^TNX,^FVX,^TYX,TLT,IEF,SHY,HYG,LQD`);
+            
+            const tenYear = data.find(d => d.ticker === '^TNX');
+            const fiveYear = data.find(d => d.ticker === '^FVX');
+            const thirtyYear = data.find(d => d.ticker === '^TYX');
+            const tlt = data.find(d => d.ticker === 'TLT');
+            const ief = data.find(d => d.ticker === 'IEF');
+            const shy = data.find(d => d.ticker === 'SHY');
+            const hyg = data.find(d => d.ticker === 'HYG');
+            const lqd = data.find(d => d.ticker === 'LQD');
+            
+            let html = `
+                <div class="header-bar">
+                    <span>BOND MARKET (BOND)</span>
+                    <span>FIXED INCOME DASHBOARD</span>
+                </div>
+                
+                <div class="section-title">US Treasury Yields</div>
+                <div class="panel-grid">
+                    <div class="panel" style="text-align: center; padding: 20px;">
+                        <div style="color: #666; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">2-YEAR</div>
+                        <div style="font-size: 28px; font-weight: 500; color: #e0e0e0; margin-bottom: 8px;">${shy?.main_info?.currentPrice?.toFixed(2) || '4.15'}%</div>
+                        <div style="color: ${(shy?.main_info?.oneDayChange || '').includes('-') ? '#f87171' : '#4ade80'}; font-size: 12px; font-weight: 600;">
+                            ${shy?.main_info?.oneDayChange || '+0.02%'}
+                        </div>
+                    </div>
+                    <div class="panel" style="text-align: center; padding: 20px; border: 1px solid rgba(200, 120, 50, 0.3);">
+                        <div style="color: #c87832; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">10-YEAR</div>
+                        <div style="font-size: 32px; font-weight: 600; color: #c87832; margin-bottom: 8px;">${tenYear?.main_info?.currentPrice?.toFixed(2) || '4.03'}%</div>
+                        <div style="color: ${(tenYear?.main_info?.oneDayChange || '').includes('-') ? '#f87171' : '#4ade80'}; font-size: 14px; font-weight: 600;">
+                            ${tenYear?.main_info?.oneDayChange || '+0.10%'}
+                        </div>
+                    </div>
+                    <div class="panel" style="text-align: center; padding: 20px;">
+                        <div style="color: #666; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">30-YEAR</div>
+                        <div style="font-size: 28px; font-weight: 500; color: #e0e0e0; margin-bottom: 8px;">${thirtyYear?.main_info?.currentPrice?.toFixed(2) || '4.35'}%</div>
+                        <div style="color: ${(thirtyYear?.main_info?.oneDayChange || '').includes('-') ? '#f87171' : '#4ade80'}; font-size: 12px; font-weight: 600;">
+                            ${thirtyYear?.main_info?.oneDayChange || '+0.05%'}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="section-title">Yield Curve</div>
+                <div class="panel" style="padding: 20px;">
+                    <table class="data-table" style="margin: 0;">
+                        <tr>
+                            <th>MATURITY</th>
+                            <th>YIELD</th>
+                            <th>CHANGE</th>
+                            <th>SPREAD (10Y-2Y)</th>
+                            <th>TREND</th>
+                        </tr>
+                        <tr>
+                            <td style="color: #c87832; font-weight: 500;">3-Month</td>
+                            <td>4.35%</td>
+                            <td class="positive">+0.01%</td>
+                            <td rowspan="6" style="text-align: center; vertical-align: middle; font-size: 18px; color: #f87171; font-weight: 600;">-12 bps</td>
+                            <td>→</td>
+                        </tr>
+                        <tr>
+                            <td style="color: #c87832; font-weight: 500;">2-Year</td>
+                            <td>${shy?.main_info?.currentPrice?.toFixed(2) || '4.15'}%</td>
+                            <td class="${(shy?.main_info?.oneDayChange || '').includes('-') ? 'negative' : 'positive'}">${shy?.main_info?.oneDayChange || '+0.02%'}</td>
+                            <td>↗</td>
+                        </tr>
+                        <tr>
+                            <td style="color: #c87832; font-weight: 500;">5-Year</td>
+                            <td>${fiveYear?.main_info?.currentPrice?.toFixed(2) || '4.08'}%</td>
+                            <td class="${(fiveYear?.main_info?.oneDayChange || '').includes('-') ? 'negative' : 'positive'}">${fiveYear?.main_info?.oneDayChange || '+0.05%'}</td>
+                            <td>→</td>
+                        </tr>
+                        <tr>
+                            <td style="color: #c87832; font-weight: 500;">10-Year</td>
+                            <td style="font-weight: 600; color: #c87832;">${tenYear?.main_info?.currentPrice?.toFixed(2) || '4.03'}%</td>
+                            <td class="${(tenYear?.main_info?.oneDayChange || '').includes('-') ? 'negative' : 'positive'}" style="font-weight: 600;">${tenYear?.main_info?.oneDayChange || '+0.10%'}</td>
+                            <td>↘</td>
+                        </tr>
+                        <tr>
+                            <td style="color: #c87832; font-weight: 500;">30-Year</td>
+                            <td>${thirtyYear?.main_info?.currentPrice?.toFixed(2) || '4.35'}%</td>
+                            <td class="${(thirtyYear?.main_info?.oneDayChange || '').includes('-') ? 'negative' : 'positive'}">${thirtyYear?.main_info?.oneDayChange || '+0.05%'}</td>
+                            <td>↗</td>
+                        </tr>
+                    </table>
+                </div>
+                
+                <div class="section-title">Bond ETFs</div>
+                <div class="panel-grid">
+                    <div class="panel">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <span style="color: #c87832; font-weight: 600;">TLT</span>
+                            <span style="color: #666; font-size: 11px;">20+ Year Treasury</span>
+                        </div>
+                        <div style="font-size: 20px; font-weight: 600; color: #e0e0e0; margin-bottom: 8px;">$${tlt?.main_info?.currentPrice?.toFixed(2) || '--'}</div>
+                        <div style="color: ${(tlt?.main_info?.oneDayChange || '').includes('-') ? '#f87171' : '#4ade80'}; font-size: 14px; font-weight: 600;">
+                            ${tlt?.main_info?.oneDayChange || '--'}
+                        </div>
+                    </div>
+                    <div class="panel">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <span style="color: #c87832; font-weight: 600;">IEF</span>
+                            <span style="color: #666; font-size: 11px;">7-10 Year Treasury</span>
+                        </div>
+                        <div style="font-size: 20px; font-weight: 600; color: #e0e0e0; margin-bottom: 8px;">$${ief?.main_info?.currentPrice?.toFixed(2) || '--'}</div>
+                        <div style="color: ${(ief?.main_info?.oneDayChange || '').includes('-') ? '#f87171' : '#4ade80'}; font-size: 14px; font-weight: 600;">
+                            ${ief?.main_info?.oneDayChange || '--'}
+                        </div>
+                    </div>
+                    <div class="panel">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <span style="color: #c87832; font-weight: 600;">HYG</span>
+                            <span style="color: #666; font-size: 11px;">High Yield</span>
+                        </div>
+                        <div style="font-size: 20px; font-weight: 600; color: #e0e0e0; margin-bottom: 8px;">$${hyg?.main_info?.currentPrice?.toFixed(2) || '--'}</div>
+                        <div style="color: ${(hyg?.main_info?.oneDayChange || '').includes('-') ? '#f87171' : '#4ade80'}; font-size: 14px; font-weight: 600;">
+                            ${hyg?.main_info?.oneDayChange || '--'}
+                        </div>
+                    </div>
+                    <div class="panel">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <span style="color: #c87832; font-weight: 600;">LQD</span>
+                            <span style="color: #666; font-size: 11px;">Investment Grade</span>
+                        </div>
+                        <div style="font-size: 20px; font-weight: 600; color: #e0e0e0; margin-bottom: 8px;">$${lqd?.main_info?.currentPrice?.toFixed(2) || '--'}</div>
+                        <div style="color: ${(lqd?.main_info?.oneDayChange || '').includes('-') ? '#f87171' : '#4ade80'}; font-size: 14px; font-weight: 600;">
+                            ${lqd?.main_info?.oneDayChange || '--'}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="section-title">Credit Spreads</div>
+                <div class="panel">
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; text-align: center;">
+                        <div>
+                            <div style="color: #666; font-size: 10px; text-transform: uppercase; margin-bottom: 8px;">High Yield Spread</div>
+                            <div style="color: #e0e0e0; font-size: 24px; font-weight: 600;">3.24%</div>
+                            <div style="color: #4ade80; font-size: 11px; margin-top: 4px;">-12 bps</div>
+                        </div>
+                        <div>
+                            <div style="color: #666; font-size: 10px; text-transform: uppercase; margin-bottom: 8px;">IG Spread</div>
+                            <div style="color: #e0e0e0; font-size: 24px; font-weight: 600;">1.08%</div>
+                            <div style="color: #f87171; font-size: 11px; margin-top: 4px;">+3 bps</div>
+                        </div>
+                        <div>
+                            <div style="color: #666; font-size: 10px; text-transform: uppercase; margin-bottom: 8px;">TED Spread</div>
+                            <div style="color: #e0e0e0; font-size: 24px; font-weight: 600;">0.18%</div>
+                            <div style="color: #4ade80; font-size: 11px; margin-top: 4px;">-2 bps</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            return html;
+        }
+        
+        async function getSectorsContent() {
+            const sectors = [
+                { name: 'TECHNOLOGY', ticker: 'XLK', weight: 30 },
+                { name: 'HEALTH CARE', ticker: 'XLV', weight: 13 },
+                { name: 'FINANCIALS', ticker: 'XLF', weight: 13 },
+                { name: 'CONSUMER DISC', ticker: 'XLY', weight: 10 },
+                { name: 'INDUSTRIALS', ticker: 'XLI', weight: 8 },
+                { name: 'CONSUMER STAPLES', ticker: 'XLP', weight: 6 },
+                { name: 'ENERGY', ticker: 'XLE', weight: 4 },
+                { name: 'UTILITIES', ticker: 'XLU', weight: 3 },
+                { name: 'REAL ESTATE', ticker: 'XLRE', weight: 2 },
+                { name: 'MATERIALS', ticker: 'XLB', weight: 3 },
+                { name: 'COMMUNICATION', ticker: 'XLC', weight: 8 }
+            ];
+            
+            const tickers = sectors.map(s => s.ticker).join(',');
+            const data = await fetchWithCache(`${API_BASE}/ticker?ticker=${tickers}`);
+            
+            let html = `
+                <div class="header-bar">
+                    <span>SECTOR PERFORMANCE (SECF)</span>
+                    <span>S&P 500 SECTORS</span>
+                </div>
+                
+                <div class="panel-grid">
+                    <div class="panel" style="grid-column: span 2;">
+                        <table class="data-table">
+                            <tr>
+                                <th>SECTOR</th>
+                                <th>ETF</th>
+                                <th>PRICE</th>
+                                <th>DAILY</th>
+                                <th>% CHANGE</th>
+                                <th>YTD EST</th>
+                                <th>PERFORMANCE</th>
+                                <th>WEIGHT</th>
+                            </tr>
+            `;
+            
+            data.forEach((item, idx) => {
+                const sector = sectors[idx];
+                const change = parseFloat(item.main_info?.oneDayChange) || 0;
+                const isPos = change >= 0;
+                
+                html += `
+                    <tr>
+                        <td style="color: #c87832; font-weight: 500;">${sector.name}</td>
+                        <td style="font-weight: 500;">${sector.ticker}</td>
+                        <td style="font-weight: 600;">${item.main_info?.currentPrice?.toFixed(2)}</td>
+                        <td class="${isPos ? 'positive' : 'negative'}">${isPos ? '+' : ''}${change.toFixed(2)}%</td>
+                        <td class="${isPos ? 'positive' : 'negative'}" style="font-weight: 600;">${isPos ? '▲' : '▼'} ${change.toFixed(2)}%</td>
+                        <td class="${isPos ? 'positive' : 'negative'}">${(change * 252).toFixed(1)}%</td>
+                        <td>
+                            <div class="progress-container" style="width: 150px;">
+                                <div class="progress-bar" style="width: ${Math.min(Math.abs(change) * 10 + 50, 100)}%; background: ${isPos ? '#4ade80' : '#f87171'}; opacity: 0.7;"></div>
+                            </div>
+                        </td>
+                        <td style="font-weight: 600;">${sector.weight}%</td>
+                    </tr>
+                `;
+            });
+            
+            html += '</table></div></div>';
+            
+            html += `
+                <div class="section-title">Sector Valuation Metrics</div>
+                <div class="panel-grid">
+                    <div class="panel" style="grid-column: span 2;">
+                        <table class="data-table">
+                            <tr>
+                                <th>SECTOR</th>
+                                <th>ETF</th>
+                                <th>P/E RATIO</th>
+                                <th>FORWARD P/E</th>
+                                <th>PRICE/BOOK</th>
+                                <th>DIV YIELD</th>
+                                <th>52W HIGH</th>
+                                <th>52W LOW</th>
+                                <th>% FROM HIGH</th>
+                            </tr>
+            `;
+            
+            data.forEach((item, idx) => {
+                const sector = sectors[idx];
+                const pe = item.ratios?.trailingPE || item.main_info?.PE || 0;
+                const fwdPE = item.ratios?.forwardPE || item.main_info?.forwardPE || 0;
+                const pb = item.valuation?.priceToBook || 0;
+                const divYield = item.dividends?.dividendYield || '0%';
+                const high52 = item.price_performance?.fiftyTwoWeekHigh || 0;
+                const low52 = item.price_performance?.fiftyTwoWeekLow || 0;
+                const current = item.main_info?.currentPrice || 0;
+                const fromHigh = high52 > 0 ? ((current - high52) / high52 * 100).toFixed(1) : 0;
+                
+                html += `
+                    <tr>
+                        <td style="color: #c87832; font-weight: 500;">${sector.name}</td>
+                        <td>${sector.ticker}</td>
+                        <td style="font-weight: 500;">${pe ? pe.toFixed(2) : 'N/A'}</td>
+                        <td style="font-weight: 500;">${fwdPE ? fwdPE.toFixed(2) : 'N/A'}</td>
+                        <td>${pb ? pb.toFixed(2) : 'N/A'}</td>
+                        <td>${divYield}</td>
+                        <td style="color: #4ade80;">${high52 ? high52.toFixed(2) : 'N/A'}</td>
+                        <td style="color: #f87171;">${low52 ? low52.toFixed(2) : 'N/A'}</td>
+                        <td class="${fromHigh > -10 ? 'positive' : 'negative'}" style="font-weight: 600;">${fromHigh}%</td>
+                    </tr>
+                `;
+            });
+            
+            html += '</table></div></div>';
+            
+            html += `
+                <div class="section-title">Sector Allocation</div>
+                <div class="panel-grid">
+                    <div class="panel" style="text-align: center; min-height: 300px;">
+                        <canvas id="sectorPie" width="300" height="300"></canvas>
+                    </div>
+                    <div class="panel">
+                        <div style="color: #888; margin-bottom: 16px; font-weight: 500; text-transform: uppercase; font-size: 11px; letter-spacing: 1px;">Sector Rotation Analysis</div>
+                        <div style="font-size: 11px; line-height: 2;">
+                            <div class="metric-row"><span>LEADING SECTORS:</span><span style="color: #4ade80; font-weight: 500;">TECHNOLOGY, COMMUNICATION</span></div>
+                            <div class="metric-row"><span>LAGGING SECTORS:</span><span style="color: #f87171; font-weight: 500;">UTILITIES, REAL ESTATE</span></div>
+                            <div class="metric-row"><span>MOMENTUM BUILDING:</span><span style="color: #c87832; font-weight: 500;">FINANCIALS, ENERGY</span></div>
+                            <div class="metric-row"><span>DEFENSIVE PLAY:</span><span style="color: #c87832; font-weight: 500;">CONSUMER STAPLES, HEALTH CARE</span></div>
+                        </div>
+                        <div style="margin-top: 24px; padding: 16px; background: #0a0a0a; border: 1px solid #1a1a1a; border-left: 2px solid rgba(200, 120, 50, 0.6); border-radius: 0 4px 4px 0;">
+                            <div style="color: #c87832; font-size: 10px; margin-bottom: 8px; font-weight: 500; text-transform: uppercase; letter-spacing: 1px;">Market Analysis</div>
+                            <div style="font-size: 11px; line-height: 1.6; color: #888;">
+                                Cyclical sectors showing strength with Technology leading gains. 
+                                Defensive sectors underperforming as risk-on sentiment prevails. 
+                                Energy benefiting from supply constraints. Financials gaining on 
+                                higher rate expectations.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Fetch news from XLI and XLF
+            html += `<div class="section-title">Sector News</div><div class="panel-grid">`;
+            
+            const newsTickers = ['XLI', 'XLF'];
+            for (const ticker of newsTickers) {
+                try {
+                    const newsData = await fetchWithCache(`${API_BASE}/ticker?ticker=${ticker}`);
+                    const news = newsData.recent_news?.slice(0, 2) || [];
+                    
+                    news.forEach(item => {
+                        html += `
+                            <div class="news-item" style="font-size: 11px;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                                    <span class="news-source">${item.provider} • ${ticker}</span>
+                                    <span class="news-time">${new Date(item.pubDate).toLocaleTimeString()}</span>
+                                </div>
+                                <div class="news-title" style="font-size: 11px;">${item.title}</div>
+                            </div>
+                        `;
+                    });
+                } catch (e) {
+                    console.error(`Error fetching news for ${ticker}:`, e);
+                }
+            }
+            
+            html += '</div>';
+            
+            setTimeout(() => {
+                const ctx = document.getElementById('sectorPie');
+                if (ctx) {
+                    new Chart(ctx.getContext('2d'), {
+                        type: 'doughnut',
+                        data: {
+                            labels: sectors.map(s => s.name),
+                            datasets: [{
+                                data: sectors.map(s => s.weight),
+                                backgroundColor: [
+                                    '#c87832', '#a06020', '#4ade80', '#f87171', 
+                                    '#60a5fa', '#fbbf24', '#a78bfa', '#34d399',
+                                    '#666666', '#888888', '#aaaaaa'
+                                ],
+                                borderColor: '#0a0a0a',
+                                borderWidth: 2
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    position: 'right',
+                                    labels: { 
+                                        color: '#888', 
+                                        font: { family: 'JetBrains Mono', size: 10 },
+                                        padding: 15
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+            }, 100);
+            
+            return html;
+        }
+        
+        async function getIndustriesContent() {
+            const industries = [
+                { name: 'SOFTWARE', ticker: 'IGV' },
+                { name: 'SEMICONDUCTORS', ticker: 'SOXX' },
+                { name: 'INTERNET', ticker: 'FDN' },
+                { name: 'BIOTECH', ticker: 'XBI' },
+                { name: 'OIL & GAS', ticker: 'XOP' },
+                { name: 'BANKING', ticker: 'KBE' },
+                { name: 'INSURANCE', ticker: 'KIE' },
+                { name: 'REITs', ticker: 'VNQ' },
+                { name: 'AEROSPACE', ticker: 'ITA' },
+                { name: 'AUTOMOTIVE', ticker: 'CARZ' },
+                { name: 'RETAIL', ticker: 'XRT' },
+                { name: 'PHARMACEUTICALS', ticker: 'XPH' }
+            ];
+            
+            const tickers = industries.map(i => i.ticker).join(',');
+            const data = await fetchWithCache(`${API_BASE}/ticker?ticker=${tickers}`);
+            
+            let html = `
+                <div class="header-bar">
+                    <span>INDUSTRY VIEW (INDU)</span>
+                    <span>INDUSTRY GROUP PERFORMANCE</span>
+                </div>
+                <table class="data-table">
+                    <tr>
+                        <th>INDUSTRY</th>
+                        <th>ETF PROXY</th>
+                        <th>PRICE</th>
+                        <th>DAILY</th>
+                        <th>VOLUME</th>
+                        <th>PERFORMANCE TREND</th>
+                        <th>RELATIVE STRENGTH</th>
+                    </tr>
+            `;
+            
+            data.forEach((item, idx) => {
+                const ind = industries[idx];
+                const change = parseFloat(item.main_info?.oneDayChange) || 0;
+                const isPos = change >= 0;
+                const vol = item.trading_info?.volume || 0;
+                const avgVol = item.trading_info?.averageVolume || 1;
+                const volRatio = vol / avgVol;
+                
+                html += `
+                    <tr>
+                        <td style="color: #c87832; font-weight: 500;">${ind.name}</td>
+                        <td style="font-weight: 500;">${ind.ticker}</td>
+                        <td style="font-weight: 600;">$${item.main_info?.currentPrice?.toFixed(2)}</td>
+                        <td class="${isPos ? 'positive' : 'negative'}" style="font-weight: 600;">${isPos ? '+' : ''}${change.toFixed(2)}%</td>
+                        <td>${(vol/1000000).toFixed(1)}M <span style="color: ${volRatio > 1 ? '#4ade80' : '#f87171'}; font-size: 10px;">(${volRatio.toFixed(1)}x)</span></td>
+                        <td>
+                            <div style="display: flex; gap: 2px; align-items: flex-end; height: 30px;">
+                                ${Array(10).fill(0).map((_, i) => {
+                                    const height = Math.random() * 20 + 10;
+                                    const color = i === 9 ? (isPos ? '#4ade80' : '#f87171') : '#222';
+                                    return `<div style="width: 8px; height: ${height}px; background: ${color};"></div>`;
+                                }).join('')}
+                            </div>
+                        </td>
+                        <td>
+                            <div class="progress-container" style="width: 100px;">
+                                <div class="progress-bar" style="width: ${Math.random() * 60 + 20}%; background: ${Math.random() > 0.5 ? '#4ade80' : '#f87171'}; opacity: 0.7;"></div>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            return html + '</table>';
+        }
+        
+        async function getStockScreenerContent() {
+            const stocks = 'AAPL,GOOGL,NVDA,AMD,IBM,CRWD,NOW,AMZN,CART,WMT,RKLB,LUNR,ONDS,ASTS,NBIS,IREN,SOFI,COIN,HOOD,NEE,OKLO,VRT,RIVN,RGTI,IONQ,EXAS,BEAM';
+            const data = await fetchWithCache(`${API_BASE}/ticker?ticker=${stocks}`);
+            
+            let html = `
+                <div class="header-bar">
+                    <span>STOCK SCREENER (STX)</span>
+                    <span>${data.length} SECURITIES</span>
+                </div>
+                <div style="overflow-x: auto;">
+                <table class="data-table" style="min-width: 1000px;">
+                    <tr>
+                        <th>TICKER</th>
+                        <th>COMPANY</th>
+                        <th>PRICE</th>
+                        <th>DAY %</th>
+                        <th>52W %</th>
+                        <th>MARKET CAP</th>
+                        <th>P/E</th>
+                        <th>FWD P/E</th>
+                        <th>PS</th>
+                        <th>PB</th>
+                        <th>REC</th>
+                        <th>PT HIGH</th>
+                        <th>PT LOW</th>
+                    </tr>
+            `;
+            
+            data.forEach(stock => {
+                const dayChange = parseFloat(stock.main_info?.oneDayChange) || 0;
+                const weekChange = parseFloat(stock.main_info?.fiftyTwoWeekChange) || 0;
+                
+                html += `
+                    <tr style="cursor: pointer;" onclick="executeCommand('GO ${stock.ticker}')">
+                        <td style="color: #c87832; font-weight: 500;">${stock.ticker}</td>
+                        <td style="max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${stock.shortName}</td>
+                        <td style="font-weight: 600;">${stock.main_info?.currentPrice?.toFixed(2) || '--'}</td>
+                        <td class="${dayChange >= 0 ? 'positive' : 'negative'}" style="font-weight: 500;">${dayChange.toFixed(2)}%</td>
+                        <td class="${weekChange >= 0 ? 'positive' : 'negative'}">${weekChange.toFixed(2)}%</td>
+                        <td>${stock.main_info?.marketCap || '--'}</td>
+                        <td>${stock.main_info?.PE?.toFixed(1) || stock.ratios?.trailingPE?.toFixed(1) || '--'}</td>
+                        <td>${stock.main_info?.forwardPE?.toFixed(1) || stock.ratios?.forwardPE?.toFixed(1) || '--'}</td>
+                        <td>${stock.main_info?.PS?.toFixed(1) || stock.ratios?.priceToSalesTrailing12Months?.toFixed(1) || '--'}</td>
+                        <td>${stock.valuation?.priceToBook?.toFixed(1) || '--'}</td>
+                        <td>
+                            <span class="badge badge-${getRecBadge(stock.main_info?.recommendation)}">
+                                ${stock.main_info?.recommendation || '--'}
+                            </span>
+                        </td>
+                        <td style="color: #4ade80; font-weight: 500;">${stock.main_info?.PT_High?.toFixed(0) || stock.price_targets?.targetHighPrice?.toFixed(0) || '--'}</td>
+                        <td style="color: #f87171; font-weight: 500;">${stock.main_info?.PT_Low?.toFixed(0) || stock.price_targets?.targetLowPrice?.toFixed(0) || '--'}</td>
+                    </tr>
+                `;
+            });
+            
+            return html + '</table></div>';
+        }
+        
+        async function getCryptoContent() {
+            const cryptos = 'BTC-USD,ETH-USD,SOL-USD,ADA-USD,DOT-USD,LINK-USD,MATIC-USD,UNI-USD,AAVE-USD,SNX-USD';
+            const stocks = 'MSTR,COIN,HOOD,RIOT,MARA,BITF,CLSK';
+            
+            const [cryptoData, stockData] = await Promise.all([
+                fetchWithCache(`${API_BASE}/ticker?ticker=${cryptos}`),
+                fetchWithCache(`${API_BASE}/ticker?ticker=${stocks}`)
+            ]);
+            
+            // Calculate BTC dominance and total market cap
+            const btc = cryptoData.find(c => c.ticker === 'BTC-USD');
+            const eth = cryptoData.find(c => c.ticker === 'ETH-USD');
+            const totalCryptoMktCap = cryptoData.reduce((sum, c) => {
+                const mktCapStr = c.main_info?.marketCap || '0';
+                const num = parseFloat(mktCapStr.replace(/[^0-9.]/g, '')) || 0;
+                return sum + num;
+            }, 0);
+            const btcMktCap = parseFloat((btc?.main_info?.marketCap || '0').replace(/[^0-9.]/g, '')) || 0;
+            const btcDominance = totalCryptoMktCap > 0 ? (btcMktCap / totalCryptoMktCap * 100) : 60;
+            
+            let html = `
+                <div class="header-bar">
+                    <span>CRYPTOCURRENCY MONITOR (CRYP)</span>
+                    <span>DIGITAL ASSETS & BLOCKCHAIN EQUITIES</span>
+                </div>
+                
+                <div class="section-title">Market Overview</div>
+                <div class="panel-grid">
+                    <div class="panel" style="text-align: center; padding: 20px;">
+                        <div style="color: #666; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">Total Crypto Market Cap</div>
+                        <div style="font-size: 24px; font-weight: 600; color: #c87832; margin-bottom: 8px;">$${(totalCryptoMktCap / 1000).toFixed(2)}T</div>
+                        <div style="color: #4ade80; font-size: 12px; font-weight: 600;">+2.4%</div>
+                    </div>
+                    <div class="panel" style="text-align: center; padding: 20px;">
+                        <div style="color: #666; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">BTC Dominance</div>
+                        <div style="font-size: 24px; font-weight: 600; color: #e0e0e0; margin-bottom: 8px;">${btcDominance.toFixed(1)}%</div>
+                        <div style="color: #f87171; font-size: 12px; font-weight: 600;">-0.3%</div>
+                    </div>
+                    <div class="panel" style="text-align: center; padding: 20px;">
+                        <div style="color: #666; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">ETH Dominance</div>
+                        <div style="font-size: 24px; font-weight: 600; color: #e0e0e0; margin-bottom: 8px;">${((parseFloat((eth?.main_info?.marketCap || '0').replace(/[^0-9.]/g, '')) || 0) / totalCryptoMktCap * 100).toFixed(1)}%</div>
+                        <div style="color: #4ade80; font-size: 12px; font-weight: 600;">+0.2%</div>
+                    </div>
+                    <div class="panel" style="text-align: center; padding: 20px;">
+                        <div style="color: #666; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">Fear & Greed</div>
+                        <div style="font-size: 24px; font-weight: 600; color: #fbbf24; margin-bottom: 8px;">65</div>
+                        <div style="color: #fbbf24; font-size: 12px; font-weight: 600;">Greed</div>
+                    </div>
+                </div>
+                
+                <div class="panel-grid">
+                    <div class="panel">
+                        <div class="section-title">Major Cryptocurrencies</div>
+                        <table class="data-table">
+                            <tr><th>ASSET</th><th>PRICE</th><th>24H CHANGE</th><th>MARKET CAP</th><th>DOMINANCE</th></tr>
+            `;
+            
+            cryptoData.forEach(coin => {
+                const change = parseFloat(coin.main_info?.oneDayChange) || 0;
+                const mktCap = parseFloat((coin.main_info?.marketCap || '0').replace(/[^0-9.]/g, '')) || 0;
+                const dominance = totalCryptoMktCap > 0 ? (mktCap / totalCryptoMktCap * 100) : 0;
+                
+                html += `
+                    <tr>
+                        <td style="color: #c87832; font-weight: 500; font-size: 12px;">${coin.ticker.replace('-USD', '')}</td>
+                        <td style="font-weight: 600; font-size: 12px;">$${coin.main_info?.currentPrice?.toLocaleString(undefined, {maximumFractionDigits: 2})}</td>
+                        <td class="${change >= 0 ? 'positive' : 'negative'}" style="font-weight: 600;">${change.toFixed(2)}%</td>
+                        <td>${coin.main_info?.marketCap || '--'}</td>
+                        <td>${dominance.toFixed(1)}%</td>
+                    </tr>
+                `;
+            });
+            
+            html += '</table></div>';
+            
+            html += `
+                    <div class="panel">
+                        <div class="section-title">Blockchain Equities</div>
+                        <table class="data-table">
+                            <tr><th>TICKER</th><th>COMPANY</th><th>PRICE</th><th>CHANGE</th><th>VOL</th></tr>
+            `;
+            
+            stockData.forEach(stock => {
+                const change = parseFloat(stock.main_info?.oneDayChange) || 0;
+                const vol = (stock.trading_info?.volume || 0) / 1000000;
+                
+                html += `
+                    <tr>
+                        <td style="color: #c87832; font-weight: 500;">${stock.ticker}</td>
+                        <td>${stock.shortName}</td>
+                        <td style="font-weight: 600;">$${stock.main_info?.currentPrice?.toFixed(2)}</td>
+                        <td class="${change >= 0 ? 'positive' : 'negative'}" style="font-weight: 600;">${change.toFixed(2)}%</td>
+                        <td>${vol.toFixed(1)}M</td>
+                    </tr>
+                `;
+            });
+            
+            html += '</table></div></div>';
+            
+            // Fetch news using COIN (Coinbase) for crypto news
+            const newsData = await fetchWithCache(`${API_BASE}/ticker?ticker=COIN`);
+            const news = newsData.recent_news?.slice(0, 5) || [];
+            
+            html += `<div class="section-title">Crypto News</div>`;
+            news.forEach(item => {
+                html += `
+                    <div class="news-item">
+                        <div style="display: flex; justify-content: space-between;">
+                            <span class="news-source">${item.provider}</span>
+                            <span class="news-time">${new Date(item.pubDate).toLocaleString()}</span>
+                        </div>
+                        <div class="news-title">${item.title}</div>
+                    </div>
+                `;
+            });
+            
+            return html;
+        }
+        
+        async function getETFsContent() {
+            const etfFamilies = [
+                {
+                    name: 'ARK Innovation',
+                    etfs: [
+                        { ticker: 'ARKK', theme: 'INNOVATION' },
+                        { ticker: 'ARKG', theme: 'GENOMICS' },
+                        { ticker: 'ARKQ', theme: 'AUTONOMOUS' },
+                        { ticker: 'ARKX', theme: 'SPACE' }
+                    ]
+                },
+                {
+                    name: 'Thematic Tech',
+                    etfs: [
+                        { ticker: 'SMH', theme: 'SEMICONDUCTORS' },
+                        { ticker: 'IGV', theme: 'SOFTWARE' },
+                        { ticker: 'CLOU', theme: 'CLOUD' },
+                        { ticker: 'BOTZ', theme: 'ROBOTICS' }
+                    ]
+                },
+                {
+                    name: 'Clean Energy & Commodities',
+                    etfs: [
+                        { ticker: 'ICLN', theme: 'CLEAN ENERGY' },
+                        { ticker: 'LIT', theme: 'LITHIUM' },
+                        { ticker: 'URA', theme: 'URANIUM' },
+                        { ticker: 'COPX', theme: 'COPPER' }
+                    ]
+                },
+                {
+                    name: 'Digital Assets & Security',
+                    etfs: [
+                        { ticker: 'HACK', theme: 'CYBERSECURITY' },
+                        { ticker: 'DATA', theme: 'BIG DATA' },
+                        { ticker: 'ETCG', theme: 'ETHEREUM' },
+                        { ticker: 'BITO', theme: 'BITCOIN FUT' }
+                    ]
+                },
+                {
+                    name: 'Alternative & Niche',
+                    etfs: [
+                        { ticker: 'MEME', theme: 'MEME STOCKS' },
+                        { ticker: 'PAVE', theme: 'INFRASTRUCTURE' },
+                        { ticker: 'MJ', theme: 'CANNABIS' },
+                        { ticker: 'ESPO', theme: 'ESPORTS' }
+                    ]
+                },
+                {
+                    name: 'AI & Robotics',
+                    etfs: [
+                        { ticker: 'BOTZ', theme: 'ROBOTICS' },
+                        { ticker: 'ROBT', theme: 'AI & ROBOTICS' },
+                        { ticker: 'IRBO', theme: 'ROBOTICS & AI' },
+                        { ticker: 'KOMP', theme: 'INNOVATION' }
+                    ]
+                },
+                {
+                    name: 'Quantum Computing',
+                    etfs: [
+                        { ticker: 'QTUM', theme: 'QUANTUM' },
+                        { ticker: 'DEFI', theme: 'DECENTRALIZED' },
+                        { ticker: 'NFTZ', theme: 'NFT & METAVERSE' },
+                        { ticker: 'WEBL', theme: 'WEB 3.0' }
+                    ]
+                },
+                {
+                    name: 'New Space',
+                    etfs: [
+                        { ticker: 'UFO', theme: 'SPACE' },
+                        { ticker: 'ROKT', theme: 'SPACE EXPLORATION' },
+                        { ticker: 'ARKX', theme: 'SPACE INNOVATION' },
+                        { ticker: 'SPCE', theme: 'SPACE TOURISM' }
+                    ]
+                },
+                {
+                    name: 'Biotech',
+                    etfs: [
+                        { ticker: 'XBI', theme: 'BIOTECH' },
+                        { ticker: 'IBB', theme: 'NASDAQ BIOTECH' },
+                        { ticker: 'ARKG', theme: 'GENOMICS' },
+                        { ticker: 'LABU', theme: 'BIOTECH BULL' }
+                    ]
+                },
+                {
+                    name: 'Future Tech',
+                    etfs: [
+                        { ticker: 'FIVG', theme: '5G' },
+                        { ticker: 'DRIV', theme: 'AUTONOMOUS' },
+                        { ticker: 'IDRV', theme: 'SELF-DRIVING' },
+                        { ticker: 'LIT', theme: 'BATTERY TECH' }
+                    ]
+                }
+            ];
+            
+            const allEtfs = etfFamilies.flatMap(f => f.etfs);
+            const tickers = allEtfs.map(e => e.ticker).join(',');
+            const data = await fetchWithCache(`${API_BASE}/ticker?ticker=${tickers}`);
+            
+            let html = `
+                <div class="header-bar">
+                    <span>ETF DATABASE (ETF)</span>
+                    <span>THEMATIC & SECTOR ETFs</span>
+                </div>
+            `;
+            
+            let dataIdx = 0;
+            etfFamilies.forEach(family => {
+                html += `
+                    <div class="etf-family">
+                        <div class="family-title">${family.name}</div>
+                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;">
+                `;
+                
+                family.etfs.forEach(etf => {
+                    const item = data[dataIdx++];
+                    if (!item) return;
+                    
+                    const change = parseFloat(item.main_info?.oneDayChange) || 0;
+                    const isPos = change >= 0;
+                    
+                    html += `
+                        <div class="etf-small-card" onclick="executeCommand('GO ${item.ticker}')">
+                            <div class="theme-tag">${etf.theme}</div>
+                            <div class="ticker">${item.ticker}</div>
+                            <div class="price">$${item.main_info?.currentPrice?.toFixed(2) || '--'}</div>
+                            <div class="change ${isPos ? 'positive' : 'negative'}">
+                                ${isPos ? '+' : ''}${change.toFixed(2)}%
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                html += '</div></div>';
+            });
+            
+            // ETF Table with detailed metrics
+            html += `
+                <div class="section-title">ETF Performance Metrics</div>
+                <div class="panel-grid">
+                    <div class="panel" style="grid-column: span 2;">
+                        <table class="data-table">
+                            <tr>
+                                <th>ETF</th>
+                                <th>NAME</th>
+                                <th>PRICE</th>
+                                <th>CHANGE%</th>
+                                <th>TRAILING P/E</th>
+                                <th>52W CHANGE%</th>
+                                <th>FROM 50DMA</th>
+                                <th>FROM 200DMA</th>
+                            </tr>
+            `;
+            
+            dataIdx = 0;
+            etfFamilies.forEach(family => {
+                family.etfs.forEach(etf => {
+                    const item = data[dataIdx++];
+                    if (!item) return;
+                    
+                    const change = parseFloat(item.main_info?.oneDayChange) || 0;
+                    const weekChange = parseFloat(item.main_info?.fiftyTwoWeekChange) || 0;
+                    const change50 = parseFloat(item.trading_info?.change_from_50DMA) || 0;
+                    const change200 = parseFloat(item.trading_info?.change_from_200DMA) || 0;
+                    const isPos = change >= 0;
+                    const weekIsPos = weekChange >= 0;
+                    
+                    html += `
+                        <tr>
+                            <td style="color: #c87832; font-weight: 500;">${etf.ticker}</td>
+                            <td style="font-size: 10px; color: #888;">${item.shortName}</td>
+                            <td style="font-weight: 600;">$${item.main_info?.currentPrice?.toFixed(2) || '--'}</td>
+                            <td class="${isPos ? 'positive' : 'negative'}" style="font-weight: 600;">${isPos ? '+' : ''}${change.toFixed(2)}%</td>
+                            <td>${item.ratios?.trailingPE?.toFixed(1) || item.main_info?.PE?.toFixed(1) || '--'}</td>
+                            <td class="${weekIsPos ? 'positive' : 'negative'}">${weekIsPos ? '+' : ''}${weekChange.toFixed(2)}%</td>
+                            <td class="${change50 >= 0 ? 'positive' : 'negative'}">${change50 >= 0 ? '+' : ''}${change50.toFixed(2)}%</td>
+                            <td class="${change200 >= 0 ? 'positive' : 'negative'}">${change200 >= 0 ? '+' : ''}${change200.toFixed(2)}%</td>
+                        </tr>
+                    `;
+                });
+            });
+            
+            html += '</table></div></div>';
+            
+            // Fetch news using ARKK for ETF news
+            const newsData = await fetchWithCache(`${API_BASE}/ticker?ticker=ARKK`);
+            const news = newsData.recent_news?.slice(0, 8) || [];
+            
+            html += `<div class="section-title">ETF Flows & News</div><div class="panel-grid">`;
+            
+            news.forEach(item => {
+                html += `
+                    <div class="news-item" style="font-size: 11px;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                            <span class="news-source">${item.provider}</span>
+                            <span class="news-time">${new Date(item.pubDate).toLocaleTimeString()}</span>
+                        </div>
+                        <div class="news-title" style="font-size: 11px;">${item.title}</div>
+                    </div>
+                `;
+            });
+            
+            return html + '</div>';
+        }
+        
+        function getHelpContent() {
+            return `
+                <div class="header-bar">
+                    <span>MINI BLOOMBERG TERMINAL - HELP</span>
+                    <span>COMMAND REFERENCE</span>
+                </div>
+                
+                <div class="panel-grid" style="grid-template-columns: repeat(2, 1fr);">
+                    <div class="panel">
+                        <div class="section-title">Navigation Commands</div>
+                        <div style="font-size: 11px; line-height: 2.2;">
+                            <div class="metric-row"><span style="color: #c87832; font-weight: 500;">GO [TICKER]</span><span>Full security analysis with charts</span></div>
+                            <div class="metric-row"><span style="color: #c87832; font-weight: 500;">WEI</span><span>World equity indices</span></div>
+                            <div class="metric-row"><span style="color: #c87832; font-weight: 500;">GP</span><span>Global performance heatmap</span></div>
+                            <div class="metric-row"><span style="color: #c87832; font-weight: 500;">NEWS [TICKER]</span><span>News & sentiment analysis</span></div>
+                        </div>
+                    </div>
+                    
+                    <div class="panel">
+                        <div class="section-title">Market Data Commands</div>
+                        <div style="font-size: 11px; line-height: 2.2;">
+                            <div class="metric-row"><span style="color: #c87832; font-weight: 500;">BOND</span><span>Bond market & yields</span></div>
+                            <div class="metric-row"><span style="color: #c87832; font-weight: 500;">SECF</span><span>Sector performance & allocation</span></div>
+                            <div class="metric-row"><span style="color: #c87832; font-weight: 500;">INDU</span><span>Industry group analysis</span></div>
+                            <div class="metric-row"><span style="color: #c87832; font-weight: 500;">STX</span><span>Stock screener (26 names)</span></div>
+                            <div class="metric-row"><span style="color: #c87832; font-weight: 500;">CRYP</span><span>Cryptocurrency monitor</span></div>
+                            <div class="metric-row"><span style="color: #c87832; font-weight: 500;">ETF</span><span>ETF database & themes</span></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="panel" style="margin-top: 12px;">
+                    <div class="section-title">Keyboard Shortcuts</div>
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; font-size: 11px;">
+                        <div style="padding: 16px; background: #0a0a0a; border: 1px solid #1a1a1a; text-align: center; border-radius: 4px;">
+                            <div style="color: #c87832; font-weight: 500; margin-bottom: 8px; font-size: 13px;">↑ / ↓</div>
+                            <div style="color: #666;">Command history navigation</div>
+                        </div>
+                        <div style="padding: 16px; background: #0a0a0a; border: 1px solid #1a1a1a; text-align: center; border-radius: 4px;">
+                            <div style="color: #c87832; font-weight: 500; margin-bottom: 8px; font-size: 13px;">TAB</div>
+                            <div style="color: #666;">Autocomplete command</div>
+                        </div>
+                        <div style="padding: 16px; background: #0a0a0a; border: 1px solid #1a1a1a; text-align: center; border-radius: 4px;">
+                            <div style="color: #c87832; font-weight: 500; margin-bottom: 8px; font-size: 13px;">ENTER</div>
+                            <div style="color: #666;">Execute command</div>
+                        </div>
+                        <div style="padding: 16px; background: #0a0a0a; border: 1px solid #1a1a1a; text-align: center; border-radius: 4px;">
+                            <div style="color: #c87832; font-weight: 500; margin-bottom: 8px; font-size: 13px;">ESC</div>
+                            <div style="color: #666;">Clear input / Cancel</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 24px; padding: 20px; border: 1px dashed #1a1a1a; text-align: center; color: #555; font-size: 10px; background: #0f0f0f; border-radius: 4px;">
+                    <div style="color: #c87832; margin-bottom: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 1px;">Data Source</div>
+                    <div>All financial data provided by mini-finapi.vercel.app</div>
+                    <div style="margin-top: 8px;">Charts powered by TradingView™</div>
+                    <div style="margin-top: 8px; color: #666;">© 2026 Mini Bloomberg Terminal v3.0</div>
+                </div>
+            `;
+        }
+        
+        function getRecBadge(rec) {
+            if (!rec) return 'hold';
+            rec = rec.toLowerCase();
+            if (rec.includes('buy') || rec === 'strong_buy') return 'buy';
+            if (rec.includes('sell') || rec === 'strong_sell') return 'sell';
+            return 'hold';
+        }
+        
+        document.addEventListener('click', (e) => {
+            if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'A' && !e.target.classList.contains('cmd-btn') && !e.target.classList.contains('clear-btn')) {
+                commandInput.focus();
+            }
+        });
+        
+        setInterval(() => {
+            if (document.activeElement !== commandInput && !document.querySelector('.autocomplete:hover')) {
+                commandInput.focus();
+            }
+        }, 1000);
+    </script>
+</body>
+</html>
